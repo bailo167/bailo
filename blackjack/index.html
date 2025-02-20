@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Ensure responsive behavior on mobile devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Perfect BlackJack Strategy Simulator</title>
   <style>
     /* Global Styles */
@@ -11,7 +13,8 @@
       font-family: Arial, sans-serif;
       background-color: #121212;
       color: #e0e0e0;
-      overflow: hidden;
+      /* Allow body scrolling if needed */
+      overflow-y: auto;
     }
     .banner {
       text-align: center;
@@ -23,6 +26,7 @@
     .container {
       display: flex;
       height: calc(100vh - 50px);
+      overflow: hidden;
     }
     .panel {
       background-color: #1e1e1e;
@@ -31,6 +35,7 @@
     }
     .left-panel {
       width: 300px;
+      flex-shrink: 0;
     }
     .center-panel {
       flex: 1;
@@ -40,6 +45,7 @@
     }
     .right-panel {
       width: 320px;
+      flex-shrink: 0;
     }
     /* Card Styles */
     .card {
@@ -124,6 +130,20 @@
     }
     .feedback .incorrect {
       color: red;
+    }
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+        height: auto;
+      }
+      .left-panel, .right-panel {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .center-panel {
+        margin: 10px 0;
+      }
     }
   </style>
 </head>
@@ -249,7 +269,7 @@
       }
       deal() {
         if (this.cards.length === 0) {
-          this.constructor(); // reinitialize if deck runs out (simplistic)
+          this.constructor(); // simplistic reinitialize
         }
         return this.cards.pop();
       }
@@ -338,12 +358,11 @@
         const pairRank = playerHand.cards[0].rank;
         if (pairRank === 'A' || pairRank === '8') return 'Split';
         if (pairRank === '10' || pairRank === '5') return 'Do Not Split';
-        // Simplistic pair strategy
         if (['2','3','7'].includes(pairRank) && dealerValue >=2 && dealerValue <=7) return 'Split';
         if (pairRank === '9' && ((dealerValue >=2 && dealerValue <=6) || (dealerValue >=8 && dealerValue <=9))) return 'Split';
         return 'Hit';
       }
-      // Soft totals (if an Ace is present and counted as 11)
+      // Soft totals
       let isSoft = false;
       for (let card of playerHand.cards) {
         if (card.rank === 'A') {
@@ -412,17 +431,14 @@
       nextGameBtn.disabled = true;
 
       // Deal initial cards
-      // Dealer
       dealerHand.addCard(deck.deal());
       dealerHand.addCard(deck.deal());
-      // Player
       playerHands[0].addCard(deck.deal());
       playerHands[0].addCard(deck.deal());
 
       renderHands();
       updateActionButtons();
 
-      // Auto-stand if player has blackjack
       if (playerHands[0].getTotal() === 21) {
         addFeedback('Player has blackjack! Auto-stand.', true);
         playerHands[0].isStand = true;
@@ -431,7 +447,6 @@
     }
 
     function renderHands() {
-      // Render dealer hand
       dealerCardsDiv.innerHTML = '';
       dealerHand.cards.forEach((card, index) => {
         const cardDiv = document.createElement('div');
@@ -445,7 +460,6 @@
         dealerCardsDiv.appendChild(cardDiv);
       });
 
-      // Render player hands
       playerHandsDiv.innerHTML = '';
       playerHands.forEach((hand, index) => {
         const handDiv = document.createElement('div');
@@ -502,7 +516,6 @@
     function playerAction(action) {
       if (roundOver) return;
       const currentHand = playerHands[currentHandIndex];
-      // Get recommendation for current hand based on dealer's upcard
       const recommendation = getPerfectStrategy(currentHand, dealerHand.cards[0]);
       const isCorrect = (recommendation.toLowerCase() === action.toLowerCase() ||
                           (recommendation === 'Do Not Split' && action !== 'Split'));
@@ -522,11 +535,9 @@
         currentHand.isStand = true;
       } else if (action === 'Split') {
         if (currentHand.isPair() && currentHand.cards[0].rank !== '5') {
-          // Split the hand into two separate hands
           const cardToMove = currentHand.cards.pop();
           const newHand = new Hand();
           newHand.addCard(cardToMove);
-          // Deal one card to each hand
           currentHand.addCard(deck.deal());
           newHand.addCard(deck.deal());
           playerHands[currentHandIndex] = currentHand;
@@ -535,7 +546,6 @@
       }
       renderHands();
       updateActionButtons();
-      // If the current hand is done, move to next hand or let dealer play
       if (currentHand.isStand || currentHand.getTotal() >= 21) {
         if (currentHandIndex < playerHands.length - 1) {
           currentHandIndex++;
@@ -547,10 +557,8 @@
     }
 
     function dealerTurn() {
-      // Reveal the dealer's hidden card
       dealerHand.revealed = true;
       renderHands();
-      // Dealer draws until total is at least 17
       while (dealerHand.getTotal() < 17) {
         dealerHand.addCard(deck.deal());
         renderHands();
@@ -561,7 +569,6 @@
     function determineOutcome() {
       const dealerTotal = dealerHand.getTotal();
       let overallResult = '';
-      // Evaluate each player's hand
       playerHands.forEach((hand, index) => {
         const playerTotal = hand.getTotal();
         let resultText = '';
