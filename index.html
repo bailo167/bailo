@@ -33,7 +33,6 @@
       margin: 0;
       font-weight: 700;
     }
-    /* Use a sup element for the header to create a stylish look for the trademark symbol */
     header h1 .tm {
       font-size: 1.5rem;
       vertical-align: top;
@@ -88,6 +87,25 @@
       font-size: 0.9rem;
       background-color: #1e1e1e;
       margin-top: 40px;
+    }
+    /* Responsive Adjustments */
+    @media (max-width: 600px) {
+      header {
+        padding: 30px 10px;
+      }
+      header h1 {
+        font-size: 2.5rem;
+      }
+      header h1 .tm {
+        font-size: 1rem;
+      }
+      header p {
+        font-size: 1.2rem;
+      }
+      #gallery {
+        gap: 15px;
+        padding: 15px;
+      }
     }
   </style>
 </head>
