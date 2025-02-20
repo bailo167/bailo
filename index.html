@@ -1,33 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coming Soon</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bailo™ - Autumn 1/25 Coming Soon</title>
   <style>
-    /* Inline CSS */
+    /* Global Styles */
     body {
+      margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 50px;
-      background-color: #f4f4f4;
-    }
-    h1 {
-      font-size: 2.5rem;
+      background: linear-gradient(to bottom, #FFFAF0, #FFDAB9);
       color: #333;
+      overflow-x: hidden;
     }
-    p {
+    header {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    header h1 {
+      font-size: 4rem;
+      margin: 0;
+      font-weight: bold;
+    }
+    header h1 sup {
+      font-size: 1.5rem;
+      vertical-align: top;
+      margin-left: 0.2em;
+    }
+    header p {
       font-size: 1.2rem;
-      color: #666;
+      margin-top: 10px;
+    }
+    /* Gallery Styles */
+    #gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto 40px;
+    }
+    #gallery img {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.5s ease;
+      opacity: 0; /* Start hidden for fade-in effect */
+      cursor: pointer;
+    }
+    #gallery img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    /* Footer Styles */
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.9rem;
+      background: #f4f4f4;
     }
   </style>
 </head>
 <body>
-  <h1>Coming Soon</h1>
-  <p>Our website is under construction. Stay tuned!</p>
+
+  <header>
+    <h1>Bailo<sup>TM</sup></h1>
+    <p>Autumn 1/25 coming soon.</p>
+  </header>
+
+  <section id="gallery">
+    <!-- Images will be added here by JavaScript -->
+  </section>
+
+  <footer>
+    &copy; 2025 Bailo. All rights reserved.
+  </footer>
+
   <script>
-    // Inline JavaScript
-    console.log('Coming Soon page loaded.');
+    // List your image filenames from the main/images folder
+    const imageFiles = [
+      'images/image1.jpg',
+      'images/image2.jpg',
+      'images/image3.jpg',
+      'images/image4.jpg',
+      'images/image5.jpg'
+    ];
+
+    // Reference to the gallery container
+    const gallery = document.getElementById('gallery');
+
+    // Create and add an image element for each file
+    imageFiles.forEach((src, index) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = "Bailo Showcase Image";
+      gallery.appendChild(img);
+      
+      // Fade-in effect for each image
+      setTimeout(() => {
+        img.style.opacity = 1;
+      }, index * 150);
+    });
   </script>
+
 </body>
 </html>
