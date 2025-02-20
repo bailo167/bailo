@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- Ensure responsive behavior on mobile devices -->
+  <!-- Responsive meta tag -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Perfect BlackJack Strategy Simulator</title>
   <style>
@@ -13,7 +13,6 @@
       font-family: Arial, sans-serif;
       background-color: #121212;
       color: #e0e0e0;
-      /* Allow body scrolling if needed */
       overflow-y: auto;
     }
     .banner {
@@ -75,7 +74,8 @@
       margin: 5px;
     }
     /* Button Styles */
-    .action-buttons button {
+    .action-buttons button,
+    .next-game-btn {
       background-color: #333333;
       color: #e0e0e0;
       border: none;
@@ -84,10 +84,12 @@
       cursor: pointer;
       border-radius: 3px;
     }
-    .action-buttons button:hover:enabled {
+    .action-buttons button:hover:enabled,
+    .next-game-btn:hover:enabled {
       background-color: #444444;
     }
-    .action-buttons button:disabled {
+    .action-buttons button:disabled,
+    .next-game-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -208,6 +210,8 @@
         <button id="doubleBtn">Double</button>
         <button id="splitBtn">Split</button>
       </div>
+      <!-- Moved Next Game button to center panel -->
+      <button id="nextGameBtn" class="next-game-btn" disabled>Next Game</button>
     </div>
     
     <!-- Right Panel: Feedback -->
@@ -226,7 +230,6 @@
       <div class="feedback">
         <h3>Correct Strategy: <span id="correctStrategy"></span></h3>
       </div>
-      <button id="nextGameBtn" disabled>Next Game</button>
     </div>
   </div>
 
@@ -353,7 +356,6 @@
     function getPerfectStrategy(playerHand, dealerUpCard) {
       const total = playerHand.getTotal();
       const dealerValue = dealerUpCard.getValue();
-      // Pair splitting strategy
       if (playerHand.isPair()) {
         const pairRank = playerHand.cards[0].rank;
         if (pairRank === 'A' || pairRank === '8') return 'Split';
@@ -362,29 +364,20 @@
         if (pairRank === '9' && ((dealerValue >=2 && dealerValue <=6) || (dealerValue >=8 && dealerValue <=9))) return 'Split';
         return 'Hit';
       }
-      // Soft totals
-      let isSoft = false;
-      for (let card of playerHand.cards) {
-        if (card.rank === 'A') {
-          isSoft = true;
-          break;
-        }
-      }
+      let isSoft = playerHand.cards.some(card => card.rank === 'A');
       if (isSoft && total < 21) {
         if (total <= 17) {
-          if (total === 16 || total === 17) {
-            if (dealerValue >=3 && dealerValue <=6 && playerHand.cards.length === 2) return 'Double';
-            else return 'Hit';
-          }
+          if ((total === 16 || total === 17) && dealerValue >=3 && dealerValue <=6 && playerHand.cards.length === 2)
+            return 'Double';
           return 'Hit';
         } else if (total === 18) {
-          if (dealerValue >=3 && dealerValue <=6 && playerHand.cards.length === 2) return 'Double';
+          if (dealerValue >=3 && dealerValue <=6 && playerHand.cards.length === 2)
+            return 'Double';
           if (dealerValue === 2 || dealerValue >= 7) return 'Stand';
         } else {
           return 'Stand';
         }
       }
-      // Hard totals
       if (total <= 8) return 'Hit';
       if (total === 9) {
         if (dealerValue >=3 && dealerValue <=6 && playerHand.cards.length === 2) return 'Double';
@@ -419,8 +412,6 @@
       roundOver = false;
       detailedFeedback = [];
       correctStrategyOverall = true;
-
-      // Clear UI
       dealerCardsDiv.innerHTML = '';
       playerHandsDiv.innerHTML = '';
       overallResultSpan.textContent = '';
@@ -429,20 +420,16 @@
       detailedFeedbackDiv.innerHTML = '';
       correctStrategySpan.textContent = '';
       nextGameBtn.disabled = true;
-
-      // Deal initial cards
       dealerHand.addCard(deck.deal());
       dealerHand.addCard(deck.deal());
       playerHands[0].addCard(deck.deal());
       playerHands[0].addCard(deck.deal());
-
       renderHands();
       updateActionButtons();
-
       if (playerHands[0].getTotal() === 21) {
         addFeedback('Player has blackjack! Auto-stand.', true);
         playerHands[0].isStand = true;
-        setTimeout(() => { dealerTurn(); }, 1000);
+        setTimeout(dealerTurn, 1000);
       }
     }
 
@@ -459,7 +446,6 @@
         }
         dealerCardsDiv.appendChild(cardDiv);
       });
-
       playerHandsDiv.innerHTML = '';
       playerHands.forEach((hand, index) => {
         const handDiv = document.createElement('div');
@@ -518,9 +504,8 @@
       const currentHand = playerHands[currentHandIndex];
       const recommendation = getPerfectStrategy(currentHand, dealerHand.cards[0]);
       const isCorrect = (recommendation.toLowerCase() === action.toLowerCase() ||
-                          (recommendation === 'Do Not Split' && action !== 'Split'));
+                         (recommendation === 'Do Not Split' && action !== 'Split'));
       addFeedback('Hand ' + (currentHandIndex + 1) + ': ' + currentHand.toString() + ' -> Action: ' + action + ' (Recommended: ' + recommendation + ')', isCorrect);
-
       if (action === 'Hit') {
         currentHand.addCard(deck.deal());
         if (currentHand.getTotal() > 21) {
@@ -550,7 +535,7 @@
         if (currentHandIndex < playerHands.length - 1) {
           currentHandIndex++;
         } else {
-          setTimeout(() => { dealerTurn(); }, 1000);
+          setTimeout(dealerTurn, 1000);
           roundOver = true;
         }
       }
