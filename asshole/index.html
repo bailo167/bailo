@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Viewport meta tag ensures proper scaling on mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>President (Asshole) Card Game</title>
   <style>
     /* ===== Global Styles ===== */
     body {
       margin: 0;
-      font-family: 'Arial', sans-serif;
+      font-family: Arial, sans-serif;
       background: #000;
       color: #f0d000;
       overflow: hidden;
@@ -31,12 +32,13 @@
     button:hover {
       background: #333;
     }
-    /* ===== Game Container ===== */
+    /* ===== Main Game Container ===== */
     #game-container {
       display: flex;
       flex-direction: column;
       height: 100vh;
       width: 100vw;
+      position: relative;
     }
     #header {
       display: flex;
@@ -44,6 +46,7 @@
       align-items: center;
       padding: 0 1em;
       background: #111;
+      z-index: 100;
     }
     #header h1 {
       flex: 1;
@@ -52,37 +55,28 @@
     #game-board {
       flex: 1;
       position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      overflow: hidden;
     }
-    /* ===== AI & Center Areas ===== */
+    /* ===== AI Player Labels ===== */
     .ai-player {
       position: absolute;
-      width: 12%;
-      height: 18%;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255,255,255,0.05);
       border: 1px solid #f0d000;
       border-radius: 8px;
       text-align: center;
-      padding-top: 0.5em;
+      padding: 0.5em;
       font-size: 1em;
     }
-    /* Default positions for desktop */
-    #ai-top { top: 2%; left: 40%; }
-    #ai-left { top: 30%; left: 2%; }
-    #ai-right { top: 30%; right: 2%; }
-    /* Human player area */
-    #player-area {
-      position: absolute;
-      bottom: 2%;
-      left: 35%;
-      width: 30%;
-      text-align: center;
-    }
-    /* ===== Center Deck & Pile ===== */
+    /* Desktop positions for AI */
+    #ai-top { top: 2%; left: 40%; width: 15%; }
+    #ai-left { top: 30%; left: 2%; width: 15%; }
+    #ai-right { top: 30%; right: 2%; width: 15%; }
+    /* ===== Center Area (Deck & Pile) ===== */
     #center {
-      position: relative;
+      position: absolute;
+      top: 35%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       width: 200px;
       height: 300px;
     }
@@ -93,20 +87,32 @@
       border-radius: 8px;
       background: #222;
       border: 1px solid #f0d000;
-      backface-visibility: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.2em;
-      transition: transform 0.5s ease;
+      transition: opacity 0.5s ease;
     }
     #deck {
       left: 0;
       top: 0;
     }
+    /* The pile will display the top played card */
     #pile {
       right: 0;
       bottom: 0;
+    }
+    /* ===== Human Player Area ===== */
+    #player-area {
+      position: absolute;
+      bottom: 2%;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 100;
+    }
+    #player-label {
+      margin-bottom: 5px;
     }
     /* ===== Player Hand ===== */
     #player-hand {
@@ -118,7 +124,7 @@
       flex-wrap: wrap;
       justify-content: center;
       margin-bottom: 10px;
-      z-index: 10;
+      z-index: 200;
     }
     .card {
       width: 80px;
@@ -133,7 +139,7 @@
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       user-select: none;
     }
-    .card.neon { 
+    .card.neon {
       background: #111;
       color: #f0d000;
       border: 1px solid #f0d000;
@@ -143,7 +149,7 @@
       background: #fdf6e3;
       color: #663300;
       border: 2px solid #aa5500;
-      font-family: 'Cursive';
+      font-family: Cursive;
     }
     .card.selected {
       transform: translateY(-15px);
@@ -152,20 +158,22 @@
     /* ===== Action Buttons ===== */
     #action-buttons {
       position: absolute;
-      bottom: 135px;
+      bottom: 150px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 20;
+      z-index: 150;
     }
     /* ===== Settings Modal ===== */
     .modal {
       display: none;
       position: fixed;
-      z-index: 100;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
+      z-index: 500;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
       overflow: auto;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0,0,0,0.8);
     }
     .modal-content {
       background: #111;
@@ -201,42 +209,31 @@
     }
     /* ===== Mobile Responsiveness ===== */
     @media (max-width: 600px) {
-      .card {
-        width: 60px;
-        height: 90px;
-      }
+      /* Center area moves toward the top so your hand is visible */
       #center {
         width: 150px;
         height: 220px;
+        top: 20%;
       }
       #deck, #pile {
-        width: 75px;
-        height: 105px;
+        width: 70px;
+        height: 100px;
       }
-      /* Position all AI players in a top row */
+      /* AI labels reposition into a single top row */
       .ai-player {
-        position: absolute;
-        top: 2%;
-        width: 25%;
-        height: auto;
-        padding: 0.5em;
-        font-size: 0.8em;
+        top: 0;
+        width: 32%;
+        font-size: 0.7em;
       }
-      #ai-top { left: 5%; }
-      #ai-left { left: 37%; }
-      #ai-right { left: 69%; }
-      /* Adjust player area */
-      #player-area {
-        left: 10%;
-        width: 80%;
-      }
-      /* Action buttons may be scaled down */
-      #action-buttons {
-        bottom: 110px;
-      }
+      #ai-top { left: 0; }
+      #ai-left { left: 34%; }
+      #ai-right { left: 68%; }
+      /* Bring player hand a bit higher so it isn’t cut off */
       #player-hand {
-        bottom: 0;
-        flex-wrap: wrap;
+        bottom: 5%;
+      }
+      #action-buttons {
+        bottom: 90px;
       }
     }
   </style>
@@ -248,22 +245,22 @@
       <button id="settings-button">Settings</button>
     </div>
     <div id="game-board">
-      <!-- AI players -->
+      <!-- ===== AI Players ===== -->
       <div id="ai-top" class="ai-player" data-player="ai1">Aggressive</div>
       <div id="ai-left" class="ai-player" data-player="ai2">Defensive</div>
       <div id="ai-right" class="ai-player" data-player="ai3">Balanced</div>
-      <!-- Center deck & pile -->
+      <!-- ===== Center Area (Deck & Pile) ===== -->
       <div id="center">
         <div id="deck">Deck</div>
-        <div id="pile">Pile</div>
+        <div id="pile"></div>
       </div>
-      <!-- Human player area -->
+      <!-- ===== Human Player Area ===== -->
       <div id="player-area">
         <div id="player-label">You</div>
       </div>
-      <!-- Player hand -->
+      <!-- ===== Player Hand ===== -->
       <div id="player-hand"></div>
-      <!-- Action Buttons -->
+      <!-- ===== Action Buttons ===== -->
       <div id="action-buttons">
         <button id="play-button">Play Selected</button>
         <button id="pass-button">Pass</button>
@@ -271,7 +268,7 @@
     </div>
   </div>
   
-  <!-- Settings Modal -->
+  <!-- ===== Settings Modal ===== -->
   <div id="settings-modal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -329,17 +326,15 @@
     </div>
   </div>
   
-  <!-- Background Music (Placeholder source) -->
+  <!-- ===== Background Music (Placeholder) ===== -->
   <audio id="background-music" loop>
     <source src="data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg" type="audio/mpeg">
   </audio>
   
   <script>
-    /* ========= Global Game Variables ========= */
+    // ===== Global Game Variables =====
     const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
     const SUITS = ["♠", "♥", "♦", "♣"];
-    const CARD_WIDTH = 80, CARD_HEIGHT = 120;
-    
     let gameSettings = {
       difficulty: "easy",
       gameMode: "classic",
@@ -349,7 +344,6 @@
       musicOn: true,
       sfxOn: true
     };
-    
     let deck = [];
     let players = [];
     let currentPlayerIndex = 0;
@@ -357,7 +351,7 @@
     let passCount = 0;
     let roundInProgress = false;
     
-    /* ========= Utility Functions ========= */
+    // ===== Utility Functions =====
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -365,10 +359,8 @@
       }
       return array;
     }
-    
     function playSound(sound) {
       if (!gameSettings.sfxOn) return;
-      // A simple beep using AudioContext (replace with proper sound files as needed)
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = ctx.createOscillator();
       oscillator.frequency.value = (sound === "card") ? 440 : 300;
@@ -379,12 +371,11 @@
         ctx.close();
       }, 100);
     }
-    
     function delay(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
     
-    /* ========= Card Class ========= */
+    // ===== Card Class =====
     class Card {
       constructor(rank, suit) {
         this.rank = rank;
@@ -397,14 +388,14 @@
         if(gameSettings.cardTheme !== "classic"){
           el.classList.add(gameSettings.cardTheme);
         }
-        el.innerHTML = `<div style="text-align:center;line-height:${CARD_HEIGHT}px;">${this.rank}${this.suit}</div>`;
+        el.innerHTML = `<div style="text-align:center; line-height:120px;">${this.rank}${this.suit}</div>`;
         el.dataset.rank = this.rank;
         el.dataset.value = this.value;
         return el;
       }
     }
     
-    /* ========= Player Class ========= */
+    // ===== Player Class =====
     class Player {
       constructor(name, isHuman = false, personality = "balanced") {
         this.name = name;
@@ -413,11 +404,9 @@
         this.hand = [];
         this.finished = false;
       }
-      
       removeCards(cardsToRemove) {
         this.hand = this.hand.filter(card => !cardsToRemove.includes(card));
       }
-      
       getLegalMoves() {
         let moves = [];
         let groups = {};
@@ -435,12 +424,11 @@
             }
           }
         }
-        // 2 resets the pile
+        // "2" resets the pile
         const twos = this.hand.filter(card => card.rank === "2");
         if (twos.length > 0) moves.push(twos.slice(0, Math.max(currentPile.count, 1)));
         return moves;
       }
-      
       async decideMove() {
         await delay(gameSettings.speed === "fast" ? 500 : 1000);
         let legalMoves = this.getLegalMoves();
@@ -459,7 +447,7 @@
       }
     }
     
-    /* ========= Game Logic ========= */
+    // ===== Main Game Logic =====
     const game = {
       init() {
         deck = [];
@@ -468,7 +456,6 @@
         passCount = 0;
         roundInProgress = true;
         currentPlayerIndex = 0;
-        
         // Build deck
         for (let rank of RANKS) {
           for (let suit of SUITS) {
@@ -476,13 +463,11 @@
           }
         }
         deck = shuffle(deck);
-        
         // Create players (human + 3 AI)
         players.push(new Player("You", true));
         players.push(new Player("Aggressive", false, "aggressive"));
         players.push(new Player("Defensive", false, "defensive"));
         players.push(new Player("Balanced", false, "balanced"));
-        
         // Deal cards evenly
         while (deck.length > 0) {
           for (let p of players) {
@@ -491,17 +476,17 @@
           }
         }
         players[0].hand.sort((a,b)=> a.value - b.value);
-        game.updateUI();
-        game.updatePlayerHand();
+        updateUI();
+        updatePlayerHand();
+        renderPile();
         game.turnLoop();
       },
-      
       async turnLoop() {
         if (!roundInProgress) return;
         let currentPlayer = players[currentPlayerIndex];
         highlightCurrentPlayer();
         if (currentPlayer.isHuman) {
-          // Wait for human input via buttons.
+          // Wait for human action
         } else {
           playSound("card");
           let move = await currentPlayer.decideMove();
@@ -518,27 +503,12 @@
           game.turnLoop();
         }
       },
-      
       playMove(player, move) {
         player.removeCards(move);
-        // Mark player as finished if no cards remain
         if (player.hand.length === 0) {
           player.finished = true;
           game.log(`${player.name} has finished!`);
         }
-        move.forEach(card => {
-          const cardEl = card.element;
-          cardEl.style.transition = "transform 0.5s ease";
-          const pileEl = document.getElementById("pile");
-          const pileRect = pileEl.getBoundingClientRect();
-          const cardRect = cardEl.getBoundingClientRect();
-          const dx = pileRect.left - cardRect.left;
-          const dy = pileRect.top - cardRect.top;
-          cardEl.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
-          setTimeout(() => {
-            cardEl.remove();
-          }, 500);
-        });
         currentPile.cards = move;
         currentPile.count = move.length;
         currentPile.rank = move[0].rank;
@@ -546,35 +516,20 @@
           currentPile = {cards: [], count: 0, rank: null};
           game.log("Pile reset by a 2!");
         }
+        renderPile();
         passCount = 0;
         playSound("card");
       },
-      
-      updatePlayerHand() {
-        const handEl = document.getElementById("player-hand");
-        handEl.innerHTML = "";
-        players[0].hand.forEach(card => {
-          const el = card.createElement();
-          card.element = el;
-          el.addEventListener("click", () => {
-            el.classList.toggle("selected");
-          });
-          handEl.appendChild(el);
-        });
-      },
-      
       updateUI() {
         const deckEl = document.getElementById("deck");
         deckEl.innerText = deck.length > 0 ? deck.length : "";
       },
-      
       advanceTurn() {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
         while (players[currentPlayerIndex].finished) {
           currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
         }
       },
-      
       checkRoundEnd() {
         let finishedCount = players.filter(p => p.finished).length;
         if (finishedCount >= 3) {
@@ -582,7 +537,6 @@
           game.endRound();
         }
       },
-      
       endRound() {
         game.log("Round over!");
         confetti();
@@ -590,7 +544,6 @@
           game.resetGame();
         }, 3000);
       },
-      
       resetGame() {
         currentPlayerIndex = 0;
         players.forEach(p => {
@@ -599,13 +552,68 @@
         });
         game.init();
       },
-      
       log(message) {
         console.log(message);
       }
     };
     
-    /* ========= Confetti Effect ========= */
+    // ===== Render the Pile =====
+    function renderPile() {
+      const pileEl = document.getElementById("pile");
+      if (currentPile.rank === null) {
+        pileEl.innerHTML = "";
+        pileEl.style.opacity = 0.5;
+      } else {
+        let topCard = currentPile.cards[0];
+        let cardEl = topCard.createElement();
+        if (currentPile.count > 1) {
+          let countBadge = document.createElement("div");
+          countBadge.style.position = "absolute";
+          countBadge.style.bottom = "2px";
+          countBadge.style.right = "2px";
+          countBadge.style.background = "#f0d000";
+          countBadge.style.color = "#000";
+          countBadge.style.borderRadius = "50%";
+          countBadge.style.width = "20px";
+          countBadge.style.height = "20px";
+          countBadge.style.display = "flex";
+          countBadge.style.alignItems = "center";
+          countBadge.style.justifyContent = "center";
+          countBadge.style.fontSize = "0.8em";
+          countBadge.innerText = currentPile.count;
+          cardEl.appendChild(countBadge);
+        }
+        pileEl.innerHTML = "";
+        pileEl.appendChild(cardEl);
+        pileEl.style.opacity = 1;
+      }
+    }
+    
+    // ===== Update Human Player Hand =====
+    function updatePlayerHand() {
+      const handEl = document.getElementById("player-hand");
+      handEl.innerHTML = "";
+      players[0].hand.forEach(card => {
+        const el = card.createElement();
+        card.element = el;
+        el.addEventListener("click", () => {
+          el.classList.toggle("selected");
+        });
+        handEl.appendChild(el);
+      });
+    }
+    
+    // ===== Highlight the Current Player =====
+    function highlightCurrentPlayer() {
+      const playerLabel = document.getElementById("player-label");
+      if (players[currentPlayerIndex].isHuman) {
+        playerLabel.classList.add("glow");
+      } else {
+        playerLabel.classList.remove("glow");
+      }
+    }
+    
+    // ===== Confetti Effect =====
     function confetti() {
       const confettiContainer = document.createElement("div");
       confettiContainer.style.position = "fixed";
@@ -637,17 +645,7 @@
       }, 3100);
     }
     
-    /* ========= UI Helpers ========= */
-    function highlightCurrentPlayer() {
-      const playerLabel = document.getElementById("player-label");
-      if (players[currentPlayerIndex].isHuman) {
-        playerLabel.classList.add("glow");
-      } else {
-        playerLabel.classList.remove("glow");
-      }
-    }
-    
-    /* ========= Human Action Buttons ========= */
+    // ===== Human Action Buttons =====
     document.getElementById("play-button").addEventListener("click", () => {
       const selectedEls = document.querySelectorAll(".card.selected");
       if (selectedEls.length === 0) return;
@@ -675,13 +673,12 @@
       if (move.length > 0) {
         game.playMove(human, move);
         human.hand = human.hand.filter(c => !move.includes(c));
-        game.updatePlayerHand();
+        updatePlayerHand();
         game.checkRoundEnd();
         game.advanceTurn();
         game.turnLoop();
       }
     });
-    
     document.getElementById("pass-button").addEventListener("click", () => {
       if (!players[0].isHuman) return;
       game.log("You pass.");
@@ -690,7 +687,7 @@
       game.turnLoop();
     });
     
-    /* ========= Settings Modal Handling ========= */
+    // ===== Settings Modal Handling =====
     const settingsModal = document.getElementById("settings-modal");
     document.getElementById("settings-button").addEventListener("click", () => {
       settingsModal.style.display = "block";
@@ -703,7 +700,6 @@
         settingsModal.style.display = "none";
       }
     });
-    
     document.getElementById("settings-form").addEventListener("submit", (e) => {
       e.preventDefault();
       gameSettings.difficulty = document.getElementById("difficulty").value;
@@ -713,7 +709,6 @@
       gameSettings.speed = document.getElementById("speed").value;
       gameSettings.musicOn = document.getElementById("music-toggle").checked;
       gameSettings.sfxOn = document.getElementById("sfx-toggle").checked;
-      
       const bgMusic = document.getElementById("background-music");
       if (gameSettings.musicOn) {
         bgMusic.play().catch(() => {});
@@ -724,7 +719,7 @@
       game.init();
     });
     
-    /* ========= Start the Game ========= */
+    // ===== Start the Game (open settings on load) =====
     window.onload = () => {
       settingsModal.style.display = "block";
     };
