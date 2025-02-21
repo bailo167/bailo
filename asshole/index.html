@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>President (Asshole) Card Game</title>
   <style>
     /* ===== Global Styles ===== */
@@ -65,7 +66,9 @@
       border-radius: 8px;
       text-align: center;
       padding-top: 0.5em;
+      font-size: 1em;
     }
+    /* Default positions for desktop */
     #ai-top { top: 2%; left: 40%; }
     #ai-left { top: 30%; left: 2%; }
     #ai-right { top: 30%; right: 2%; }
@@ -77,7 +80,7 @@
       width: 30%;
       text-align: center;
     }
-    /* ===== Deck & Pile ===== */
+    /* ===== Center Deck & Pile ===== */
     #center {
       position: relative;
       width: 200px;
@@ -112,6 +115,8 @@
       left: 50%;
       transform: translateX(-50%);
       display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       margin-bottom: 10px;
       z-index: 10;
     }
@@ -193,6 +198,46 @@
     @keyframes glow {
       from { box-shadow: 0 0 8px #f0d000; }
       to { box-shadow: 0 0 20px #f0d000; }
+    }
+    /* ===== Mobile Responsiveness ===== */
+    @media (max-width: 600px) {
+      .card {
+        width: 60px;
+        height: 90px;
+      }
+      #center {
+        width: 150px;
+        height: 220px;
+      }
+      #deck, #pile {
+        width: 75px;
+        height: 105px;
+      }
+      /* Position all AI players in a top row */
+      .ai-player {
+        position: absolute;
+        top: 2%;
+        width: 25%;
+        height: auto;
+        padding: 0.5em;
+        font-size: 0.8em;
+      }
+      #ai-top { left: 5%; }
+      #ai-left { left: 37%; }
+      #ai-right { left: 69%; }
+      /* Adjust player area */
+      #player-area {
+        left: 10%;
+        width: 80%;
+      }
+      /* Action buttons may be scaled down */
+      #action-buttons {
+        bottom: 110px;
+      }
+      #player-hand {
+        bottom: 0;
+        flex-wrap: wrap;
+      }
     }
   </style>
 </head>
@@ -284,7 +329,7 @@
     </div>
   </div>
   
-  <!-- Background Music (Placeholder source – replace data URI with an actual audio file if desired) -->
+  <!-- Background Music (Placeholder source) -->
   <audio id="background-music" loop>
     <source src="data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg" type="audio/mpeg">
   </audio>
@@ -323,7 +368,7 @@
     
     function playSound(sound) {
       if (!gameSettings.sfxOn) return;
-      // A placeholder beep using AudioContext (can be replaced with proper sound files)
+      // A simple beep using AudioContext (replace with proper sound files as needed)
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = ctx.createOscillator();
       oscillator.frequency.value = (sound === "card") ? 440 : 300;
@@ -349,7 +394,6 @@
       createElement() {
         const el = document.createElement("div");
         el.classList.add("card");
-        // Apply theme class if not classic
         if(gameSettings.cardTheme !== "classic"){
           el.classList.add(gameSettings.cardTheme);
         }
@@ -374,10 +418,8 @@
         this.hand = this.hand.filter(card => !cardsToRemove.includes(card));
       }
       
-      // Returns an array of legal moves (each move is an array of one or more cards of same rank)
       getLegalMoves() {
         let moves = [];
-        // Group cards by rank
         let groups = {};
         this.hand.forEach(card => {
           if (!groups[card.rank]) groups[card.rank] = [];
@@ -385,38 +427,31 @@
         });
         for (let rank in groups) {
           const group = groups[rank];
-          // If no card on pile, any play is legal
           if (currentPile.rank === null) {
             moves.push(group);
           } else {
-            // Check count
             if (group.length >= currentPile.count && RANKS.indexOf(rank) > RANKS.indexOf(currentPile.rank)) {
-              moves.push(group.slice(0, currentPile.count)); // play the required count
+              moves.push(group.slice(0, currentPile.count));
             }
           }
         }
-        // 2 always resets the pile
+        // 2 resets the pile
         const twos = this.hand.filter(card => card.rank === "2");
-        if (twos.length >= currentPile.count || currentPile.rank === null) {
-          if (twos.length > 0) moves.push(twos.slice(0, Math.max(currentPile.count, 1)));
-        }
+        if (twos.length > 0) moves.push(twos.slice(0, Math.max(currentPile.count, 1)));
         return moves;
       }
       
-      // AI decision making based on difficulty and personality
       async decideMove() {
         await delay(gameSettings.speed === "fast" ? 500 : 1000);
         let legalMoves = this.getLegalMoves();
-        if (legalMoves.length === 0) return null; // must pass
+        if (legalMoves.length === 0) return null;
         let move;
         if (gameSettings.difficulty === "easy") {
           move = legalMoves[Math.floor(Math.random() * legalMoves.length)];
         } else if (gameSettings.difficulty === "moderate") {
-          // Choose the lowest winning move
           legalMoves.sort((a,b) => a[0].value - b[0].value);
           move = legalMoves[0];
         } else {
-          // Hard mode: try to play a move that leaves few options later
           legalMoves.sort((a,b) => a.length - b.length || a[0].value - b[0].value);
           move = legalMoves[0];
         }
@@ -427,12 +462,13 @@
     /* ========= Game Logic ========= */
     const game = {
       init() {
-        // Reset variables
         deck = [];
         players = [];
         currentPile = {cards: [], count: 0, rank: null};
         passCount = 0;
         roundInProgress = true;
+        currentPlayerIndex = 0;
+        
         // Build deck
         for (let rank of RANKS) {
           for (let suit of SUITS) {
@@ -441,7 +477,7 @@
         }
         deck = shuffle(deck);
         
-        // Create players (human + 3 AI with preset personalities)
+        // Create players (human + 3 AI)
         players.push(new Player("You", true));
         players.push(new Player("Aggressive", false, "aggressive"));
         players.push(new Player("Defensive", false, "defensive"));
@@ -454,7 +490,6 @@
             p.hand.push(deck.pop());
           }
         }
-        // Sort human hand for convenience
         players[0].hand.sort((a,b)=> a.value - b.value);
         game.updateUI();
         game.updatePlayerHand();
@@ -466,9 +501,8 @@
         let currentPlayer = players[currentPlayerIndex];
         highlightCurrentPlayer();
         if (currentPlayer.isHuman) {
-          // Wait for human input; UI buttons handle move or pass.
+          // Wait for human input via buttons.
         } else {
-          // AI turn
           playSound("card");
           let move = await currentPlayer.decideMove();
           if (move === null) {
@@ -486,10 +520,12 @@
       },
       
       playMove(player, move) {
-        // Validate move (assumed legal for AI; human moves are validated on click)
-        // Remove played cards from player's hand
         player.removeCards(move);
-        // Animate move to pile
+        // Mark player as finished if no cards remain
+        if (player.hand.length === 0) {
+          player.finished = true;
+          game.log(`${player.name} has finished!`);
+        }
         move.forEach(card => {
           const cardEl = card.element;
           cardEl.style.transition = "transform 0.5s ease";
@@ -499,17 +535,14 @@
           const dx = pileRect.left - cardRect.left;
           const dy = pileRect.top - cardRect.top;
           cardEl.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
-          // After animation, remove card element from hand display
           setTimeout(() => {
             cardEl.remove();
           }, 500);
         });
-        // Update current pile info
         currentPile.cards = move;
         currentPile.count = move.length;
         currentPile.rank = move[0].rank;
         if (move[0].rank === "2") {
-          // 2 resets the pile
           currentPile = {cards: [], count: 0, rank: null};
           game.log("Pile reset by a 2!");
         }
@@ -531,22 +564,19 @@
       },
       
       updateUI() {
-        // Update deck count display
         const deckEl = document.getElementById("deck");
         deckEl.innerText = deck.length > 0 ? deck.length : "";
       },
       
       advanceTurn() {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        // Skip players who have finished (empty hand)
         while (players[currentPlayerIndex].finished) {
           currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
         }
       },
       
       checkRoundEnd() {
-        // If three players have finished (empty hand) then the round is over.
-        let finishedCount = players.filter(p => p.hand.length === 0).length;
+        let finishedCount = players.filter(p => p.finished).length;
         if (finishedCount >= 3) {
           roundInProgress = false;
           game.endRound();
@@ -555,19 +585,13 @@
       
       endRound() {
         game.log("Round over!");
-        // Determine rankings (for simplicity, the first player out is President, the last is Asshole)
-        // (A full implementation would track finish order across rounds.)
-        // Show confetti effect for winners.
         confetti();
-        // Placeholder for card exchange logic between President and Asshole.
-        // After a pause, restart game.
         setTimeout(() => {
           game.resetGame();
         }, 3000);
       },
       
       resetGame() {
-        // Reset state and start a new round (exchanging cards between President and Asshole can be added here)
         currentPlayerIndex = 0;
         players.forEach(p => {
           p.hand = [];
@@ -615,7 +639,6 @@
     
     /* ========= UI Helpers ========= */
     function highlightCurrentPlayer() {
-      // For simplicity, add glow to the human label if it's their turn
       const playerLabel = document.getElementById("player-label");
       if (players[currentPlayerIndex].isHuman) {
         playerLabel.classList.add("glow");
@@ -628,14 +651,11 @@
     document.getElementById("play-button").addEventListener("click", () => {
       const selectedEls = document.querySelectorAll(".card.selected");
       if (selectedEls.length === 0) return;
-      // Validate: all selected cards must be same rank
       const ranks = Array.from(selectedEls).map(el => el.dataset.rank);
-      const unique = new Set(ranks);
-      if (unique.size > 1) {
+      if (new Set(ranks).size > 1) {
         alert("Please select cards of the same rank.");
         return;
       }
-      // Check legality
       const selectedRank = ranks[0];
       const count = selectedEls.length;
       if (currentPile.rank !== null && count !== currentPile.count) {
@@ -646,7 +666,6 @@
         alert("Selected cards do not beat the current pile.");
         return;
       }
-      // Get the card objects from the human player's hand
       const move = [];
       const human = players[0];
       selectedEls.forEach(el => {
@@ -687,7 +706,6 @@
     
     document.getElementById("settings-form").addEventListener("submit", (e) => {
       e.preventDefault();
-      // Update settings
       gameSettings.difficulty = document.getElementById("difficulty").value;
       gameSettings.gameMode = document.getElementById("game-mode").value;
       gameSettings.cardTheme = document.getElementById("card-theme").value;
@@ -696,21 +714,17 @@
       gameSettings.musicOn = document.getElementById("music-toggle").checked;
       gameSettings.sfxOn = document.getElementById("sfx-toggle").checked;
       
-      // Apply background music toggle
       const bgMusic = document.getElementById("background-music");
       if (gameSettings.musicOn) {
-        bgMusic.play();
+        bgMusic.play().catch(() => {});
       } else {
         bgMusic.pause();
       }
       settingsModal.style.display = "none";
-      // Start game
       game.init();
     });
     
-    /* ========= Start the Game (if settings already submitted) ========= */
-    // You can auto-open settings or wait for user interaction.
-    // For now, we open the settings modal on load.
+    /* ========= Start the Game ========= */
     window.onload = () => {
       settingsModal.style.display = "block";
     };
