@@ -2,234 +2,226 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- Set viewport for responsive scaling on mobile devices -->
+  <!-- Responsive scaling for mobile devices -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive 3D Disassemblable Pistol</title>
+  <title>Interactive 3D Disassemblable Pistol for iOS Safari</title>
   <style>
-    /* Reset margins and ensure full-screen canvas */
+    /* Reset margins and ensure full-screen display */
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       height: 100%;
     }
-    /* Container for our 3D canvas */
+    /* Container for the WebGL canvas */
     #container {
       width: 100%;
       height: 100%;
     }
+    /* Optional error message styling */
+    #errorMessage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #ff0000;
+      color: #fff;
+      text-align: center;
+      padding: 10px;
+      font-size: 16px;
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <!-- Container div to hold the WebGL canvas -->
+  <!-- Error message container (shown if WebGL is unavailable) -->
+  <div id="errorMessage">WebGL is not supported in your browser.</div>
+  <!-- Container for the 3D scene -->
   <div id="container"></div>
 
-  <!-- Include Three.js from a reliable CDN -->
+  <!-- Load Three.js and OrbitControls from reliable CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-  <!-- Include OrbitControls for interactive 360° viewing -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
 
   <script>
-    /*
-     * Interactive 3D Disassemblable Pistol Demo
-     *
-     * This script sets up a Three.js scene containing a rudimentary pistol model,
-     * composed of four parts: Barrel, Slide, Frame (Grip), and Trigger.
-     * Each part is assigned both an "assembled" (original) and a "disassembled"
-     * position. Clicking (or tapping) on a part toggles its state, smoothly animating
-     * it between positions.
-     *
-     * Users can rotate, pan, and zoom the scene with mouse or touch controls
-     * via OrbitControls.
-     */
-
-    // Global variables for scene, camera, renderer, controls, etc.
-    let scene, camera, renderer, controls;
-    let raycaster, mouse;
-    // Array to hold our pistol parts along with their state data.
-    let pistolParts = [];
-
-    // Initialize scene, camera, renderer, objects, and event listeners.
-    init();
-    animate();
-
-    function init() {
-      // Create the scene and set a light grey background.
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xeeeeee);
-
-      // Set up a perspective camera with a 45° field-of-view.
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      // Position the camera so the pistol is in view.
-      camera.position.set(0, 0.2, 1.5);
-
-      // Set up the WebGL renderer with antialiasing.
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      // Append the renderer's canvas element to the container div.
-      document.getElementById('container').appendChild(renderer.domElement);
-
-      // Set up OrbitControls for 360-degree interactive viewing.
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true; // enables smooth inertial movement
-      controls.dampingFactor = 0.25;
-      controls.enableZoom = true;
-
-      // Add ambient light for overall illumination.
-      const ambientLight = new THREE.AmbientLight(0x404040, 2); // soft white light
-      scene.add(ambientLight);
-      // Add directional light to create highlights and shadows.
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-      directionalLight.position.set(0, 1, 1);
-      scene.add(directionalLight);
-
-      // Set up raycaster and a vector to store normalized mouse coordinates.
-      raycaster = new THREE.Raycaster();
-      mouse = new THREE.Vector2();
-
-      // Create a group to hold all parts of the pistol.
-      const pistolGroup = new THREE.Group();
-      scene.add(pistolGroup);
-
-      // Define basic materials (colors) for each part.
-      const barrelMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-      const slideMaterial  = new THREE.MeshStandardMaterial({ color: 0x777777 });
-      const frameMaterial  = new THREE.MeshStandardMaterial({ color: 0x333333 });
-      const triggerMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
-
-      // ---------------------------
-      // Create Pistol Parts
-      // ---------------------------
-
-      // Part 1: Barrel - represented as a cylinder.
-      const barrelGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 32);
-      const barrelMesh = new THREE.Mesh(barrelGeometry, barrelMaterial);
-      // Rotate cylinder to horizontal orientation.
-      barrelMesh.rotation.z = Math.PI / 2;
-      // Position the barrel to the right of the pistol body.
-      barrelMesh.position.set(0.25, 0, 0);
-      // Store original and disassembled positions (offset for disassembly).
-      pistolParts.push({
-        mesh: barrelMesh,
-        originalPosition: barrelMesh.position.clone(),
-        disassembledPosition: barrelMesh.position.clone().add(new THREE.Vector3(0.3, 0.3, 0)),
-        isDisassembled: false
-      });
-      pistolGroup.add(barrelMesh);
-
-      // Part 2: Slide - represented as a box.
-      const slideGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.08);
-      const slideMesh = new THREE.Mesh(slideGeometry, slideMaterial);
-      // Position the slide slightly above the frame.
-      slideMesh.position.set(0.1, 0.05, 0);
-      pistolParts.push({
-        mesh: slideMesh,
-        originalPosition: slideMesh.position.clone(),
-        disassembledPosition: slideMesh.position.clone().add(new THREE.Vector3(-0.3, 0.3, 0)),
-        isDisassembled: false
-      });
-      pistolGroup.add(slideMesh);
-
-      // Part 3: Frame (Grip) - represented as a box.
-      const frameGeometry = new THREE.BoxGeometry(0.15, 0.25, 0.1);
-      const frameMesh = new THREE.Mesh(frameGeometry, frameMaterial);
-      // Position the frame below the slide to simulate a grip.
-      frameMesh.position.set(0, -0.1, 0);
-      pistolParts.push({
-        mesh: frameMesh,
-        originalPosition: frameMesh.position.clone(),
-        disassembledPosition: frameMesh.position.clone().add(new THREE.Vector3(0, -0.3, -0.2)),
-        isDisassembled: false
-      });
-      pistolGroup.add(frameMesh);
-
-      // Part 4: Trigger - represented as a small box.
-      const triggerGeometry = new THREE.BoxGeometry(0.05, 0.02, 0.02);
-      const triggerMesh = new THREE.Mesh(triggerGeometry, triggerMaterial);
-      // Position the trigger near the frame.
-      triggerMesh.position.set(0.05, -0.2, 0.05);
-      pistolParts.push({
-        mesh: triggerMesh,
-        originalPosition: triggerMesh.position.clone(),
-        disassembledPosition: triggerMesh.position.clone().add(new THREE.Vector3(0.2, -0.2, 0.2)),
-        isDisassembled: false
-      });
-      pistolGroup.add(triggerMesh);
-
-      // ---------------------------
-      // Event Listeners for Interaction
-      // ---------------------------
-      window.addEventListener('resize', onWindowResize, false);
-      // Listen for mouse clicks.
-      renderer.domElement.addEventListener('click', onDocumentClick, false);
-      // Listen for touch events.
-      renderer.domElement.addEventListener('touchstart', onDocumentTouch, false);
-    }
-
-    // Adjust camera and renderer when the browser window is resized.
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    // Handle mouse click events.
-    function onDocumentClick(event) {
-      // Convert mouse coordinates to normalized device coordinates (-1 to +1).
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-      // Update the raycaster using the camera and mouse position.
-      raycaster.setFromCamera(mouse, camera);
-      // Get the list of objects intersected by the ray.
-      const intersects = raycaster.intersectObjects(pistolParts.map(part => part.mesh));
-      if (intersects.length > 0) {
-        // Toggle the disassembled state of the first intersected object.
-        const clickedMesh = intersects[0].object;
-        toggleDisassemble(clickedMesh);
+    // Wait for the DOM to load before running the script.
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check for WebGL support. If not available, show an error message.
+      if (!THREE.WEBGL.isWebGLAvailable()) {
+        document.getElementById('errorMessage').style.display = 'block';
+        return;
       }
-    }
 
-    // Handle touch events (similar to mouse clicks).
-    function onDocumentTouch(event) {
-      event.preventDefault();
-      if (event.touches.length > 0) {
-        const touch = event.touches[0];
-        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+      // Global variables for scene, camera, renderer, controls, etc.
+      let scene, camera, renderer, controls, raycaster, mouse;
+      let pistolParts = []; // Array to store pistol parts and their states
+
+      // Initialize the Three.js scene.
+      function init() {
+        // Create the scene with a light grey background.
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeeeeee);
+
+        // Set up a perspective camera with a 45° field-of-view.
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0.2, 1.5); // Position the camera so the pistol is visible.
+
+        // Create the WebGL renderer with antialiasing enabled.
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Set up OrbitControls for 360° interactive viewing.
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Enable smooth inertial movement.
+        controls.dampingFactor = 0.25;
+        controls.enableZoom = true;
+
+        // Add ambient light for overall illumination.
+        scene.add(new THREE.AmbientLight(0x404040, 2));
+        // Add directional light to create highlights and shadows.
+        let directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        // Set up a raycaster and a vector to store normalized mouse coordinates.
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        // Create a group to hold all parts of the pistol.
+        const pistolGroup = new THREE.Group();
+        scene.add(pistolGroup);
+
+        // Define basic materials for each part.
+        const barrelMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+        const slideMaterial  = new THREE.MeshStandardMaterial({ color: 0x777777 });
+        const frameMaterial  = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const triggerMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+
+        // ---------------------------
+        // Create Pistol Parts
+        // ---------------------------
+        
+        // Part 1: Barrel – represented as a cylinder.
+        const barrelGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 32);
+        const barrelMesh = new THREE.Mesh(barrelGeometry, barrelMaterial);
+        // Rotate the cylinder to a horizontal orientation.
+        barrelMesh.rotation.z = Math.PI / 2;
+        // Position the barrel to the right of the pistol body.
+        barrelMesh.position.set(0.25, 0, 0);
+        // Store its original and disassembled positions.
+        pistolParts.push({
+          mesh: barrelMesh,
+          originalPosition: barrelMesh.position.clone(),
+          disassembledPosition: barrelMesh.position.clone().add(new THREE.Vector3(0.3, 0.3, 0)),
+          isDisassembled: false
+        });
+        pistolGroup.add(barrelMesh);
+
+        // Part 2: Slide – represented as a box.
+        const slideGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.08);
+        const slideMesh = new THREE.Mesh(slideGeometry, slideMaterial);
+        // Position the slide slightly above the frame.
+        slideMesh.position.set(0.1, 0.05, 0);
+        pistolParts.push({
+          mesh: slideMesh,
+          originalPosition: slideMesh.position.clone(),
+          disassembledPosition: slideMesh.position.clone().add(new THREE.Vector3(-0.3, 0.3, 0)),
+          isDisassembled: false
+        });
+        pistolGroup.add(slideMesh);
+
+        // Part 3: Frame (Grip) – represented as a box.
+        const frameGeometry = new THREE.BoxGeometry(0.15, 0.25, 0.1);
+        const frameMesh = new THREE.Mesh(frameGeometry, frameMaterial);
+        // Position the frame below the slide to simulate a grip.
+        frameMesh.position.set(0, -0.1, 0);
+        pistolParts.push({
+          mesh: frameMesh,
+          originalPosition: frameMesh.position.clone(),
+          disassembledPosition: frameMesh.position.clone().add(new THREE.Vector3(0, -0.3, -0.2)),
+          isDisassembled: false
+        });
+        pistolGroup.add(frameMesh);
+
+        // Part 4: Trigger – represented as a small box.
+        const triggerGeometry = new THREE.BoxGeometry(0.05, 0.02, 0.02);
+        const triggerMesh = new THREE.Mesh(triggerGeometry, triggerMaterial);
+        // Position the trigger near the frame.
+        triggerMesh.position.set(0.05, -0.2, 0.05);
+        pistolParts.push({
+          mesh: triggerMesh,
+          originalPosition: triggerMesh.position.clone(),
+          disassembledPosition: triggerMesh.position.clone().add(new THREE.Vector3(0.2, -0.2, 0.2)),
+          isDisassembled: false
+        });
+        pistolGroup.add(triggerMesh);
+
+        // ---------------------------
+        // Event Listeners for Interaction
+        // ---------------------------
+        window.addEventListener('resize', onWindowResize, false);
+        renderer.domElement.addEventListener('click', onDocumentClick, false);
+        renderer.domElement.addEventListener('touchstart', onDocumentTouch, false);
+      }
+
+      // Adjust camera and renderer on window resize.
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      // Handle mouse click events.
+      function onDocumentClick(event) {
+        // Convert mouse coordinates to normalized device coordinates.
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(pistolParts.map(part => part.mesh));
+        const intersects = raycaster.intersectObjects(pistolParts.map(p => p.mesh));
         if (intersects.length > 0) {
-          const touchedMesh = intersects[0].object;
-          toggleDisassemble(touchedMesh);
+          toggleDisassemble(intersects[0].object);
         }
       }
-    }
 
-    // Toggle the disassembled state of a given mesh.
-    function toggleDisassemble(mesh) {
-      // Find the corresponding part in our array.
-      const part = pistolParts.find(p => p.mesh === mesh);
-      if (part) {
-        // Toggle between assembled and disassembled.
-        part.isDisassembled = !part.isDisassembled;
+      // Handle touch events (similar to mouse clicks).
+      function onDocumentTouch(event) {
+        if (event.touches.length > 0) {
+          const touch = event.touches[0];
+          mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = - (touch.clientY / window.innerHeight) * 2 + 1;
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects(pistolParts.map(p => p.mesh));
+          if (intersects.length > 0) {
+            toggleDisassemble(intersects[0].object);
+          }
+        }
       }
-    }
 
-    // Animation loop to update positions and render the scene.
-    function animate() {
-      requestAnimationFrame(animate);
-      // For each pistol part, smoothly interpolate its position.
-      pistolParts.forEach(part => {
-        // Set target based on the current state.
-        const targetPosition = part.isDisassembled ? part.disassembledPosition : part.originalPosition;
-        // Lerp (linear interpolate) towards the target for smooth animation.
-        part.mesh.position.lerp(targetPosition, 0.1);
-      });
-      // Update controls (for inertia/damping effects).
-      controls.update();
-      // Render the scene from the perspective of the camera.
-      renderer.render(scene, camera);
-    }
+      // Toggle the disassembled state of a pistol part.
+      function toggleDisassemble(mesh) {
+        const part = pistolParts.find(p => p.mesh === mesh);
+        if (part) {
+          part.isDisassembled = !part.isDisassembled;
+        }
+      }
+
+      // Animation loop to update positions and render the scene.
+      function animate() {
+        requestAnimationFrame(animate);
+        // Smoothly interpolate each part's position toward its target.
+        pistolParts.forEach(part => {
+          const target = part.isDisassembled ? part.disassembledPosition : part.originalPosition;
+          part.mesh.position.lerp(target, 0.1);
+        });
+        controls.update();
+        renderer.render(scene, camera);
+      }
+
+      // Initialize the scene and start the animation loop.
+      init();
+      animate();
+    });
   </script>
 </body>
 </html>
