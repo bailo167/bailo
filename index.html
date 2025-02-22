@@ -2,173 +2,373 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bailo™</title>
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     /* Global Styles */
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Roboto', sans-serif;
-      background-color: #121212;
-      color: #e0e0e0;
-      scroll-behavior: smooth;
+      background: black;
+      overflow: hidden;
+      font-family: monospace;
     }
-    /* Header */
-    header {
-      text-align: center;
-      padding: 50px 20px;
-      background: linear-gradient(135deg, #1e1e1e, #333);
-      position: sticky;
+    /* Space Background Canvas */
+    #spaceCanvas {
+      position: fixed;
       top: 0;
-      z-index: 100;
-    }
-    header h1 {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 4rem;
-      margin: 0;
-      font-weight: 700;
-    }
-    header h1 .tm {
-      font-size: 1.5rem;
-      vertical-align: top;
-      margin-left: 0.2em;
-    }
-    header p {
-      font-size: 1.5rem;
-      margin-top: 10px;
-      font-weight: 300;
-    }
-    /* Gallery Container */
-    #gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 20px auto;
-    }
-    /* Individual Gallery Item */
-    .gallery-item {
-      text-align: center;
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .gallery-item.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .gallery-item img {
+      left: 0;
       width: 100%;
-      height: auto;
-      border-radius: 8px;
+      height: 100%;
+      z-index: -3;
+    }
+    /* Explosion Effect Canvas (covers full window) */
+    #explosionCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -2;
+    }
+    /* 3D Logo Container Wrapper */
+    #logoWrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1000px;
+      height: 600px;
+      margin: -300px 0 0 -500px; /* Center it */
+      perspective: 1000px;
       cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      z-index: 1;
     }
-    .gallery-item img:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    /* The inner container that will be rotated (logo) */
+    #logoContainer {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      z-index: 2;
     }
-    .caption {
-      margin-top: 10px;
-      font-size: 1rem;
-      font-family: 'Roboto', sans-serif;
-      color: #ccc;
+    /* Each Matrix Canvas Layer */
+    .logoLayer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1000px;
+      height: 600px;
     }
-    /* Footer */
-    footer {
+    /* Layers with Depth Transforms */
+    #layer0 { transform: translateZ(-40px); opacity: 0.6; }
+    #layer1 { transform: translateZ(-20px); opacity: 0.75; }
+    #layer2 { transform: translateZ(0px); opacity: 0.9; }
+    #layer3 { transform: translateZ(20px); opacity: 0.98; }
+    #layer4 { transform: translateZ(40px); opacity: 1; }
+    /* Subheading */
+    #subheading {
+      position: fixed;
+      bottom: 20px;
+      width: 100%;
       text-align: center;
-      padding: 20px;
-      font-size: 0.9rem;
-      background-color: #1e1e1e;
-      margin-top: 40px;
-    }
-    /* Responsive Adjustments */
-    @media (max-width: 600px) {
-      header {
-        padding: 30px 10px;
-      }
-      header h1 {
-        font-size: 2.5rem;
-      }
-      header h1 .tm {
-        font-size: 1rem;
-      }
-      header p {
-        font-size: 1.2rem;
-      }
-      #gallery {
-        gap: 15px;
-        padding: 15px;
-      }
+      color: white;
+      font-size: 1.5em;
+      opacity: 0.8;
+      z-index: 2;
     }
   </style>
 </head>
 <body>
-
-  <header>
-    <h1>Bailo<span class="tm">™</span></h1>
-    <p>Autumn 1/25 coming soon.</p>
-  </header>
-
-  <section id="gallery">
-    <!-- Gallery items will be added dynamically -->
-  </section>
-
-  <footer>
-    &copy; 2025 Bailo. All rights reserved.
-  </footer>
+  <!-- Space Background -->
+  <canvas id="spaceCanvas"></canvas>
+  <!-- Explosion Effect Canvas -->
+  <canvas id="explosionCanvas"></canvas>
+  <!-- 3D Logo Container -->
+  <div id="logoWrapper">
+    <div id="logoContainer">
+      <canvas id="layer0" class="logoLayer" width="1000" height="600"></canvas>
+      <canvas id="layer1" class="logoLayer" width="1000" height="600"></canvas>
+      <canvas id="layer2" class="logoLayer" width="1000" height="600"></canvas>
+      <canvas id="layer3" class="logoLayer" width="1000" height="600"></canvas>
+      <canvas id="layer4" class="logoLayer" width="1000" height="600"></canvas>
+    </div>
+  </div>
+  <!-- Subheading -->
+  <div id="subheading">Autumn 1/25 coming soon</div>
 
   <script>
-    // Reference to the gallery container.
-    const gallery = document.getElementById('gallery');
-
-    // Create 30 gallery items with images and captions.
-    for (let i = 1; i <= 30; i++) {
-      // Create container div for each gallery item.
-      const container = document.createElement('div');
-      container.className = 'gallery-item';
-      
-      // Create the image element.
-      const img = document.createElement('img');
-      // Assuming images are in "images/" relative to index.html.
-      img.src = `images/Image${i}.jpg`;
-      img.alt = `Bailo Showcase Image ${i}`;
-      
-      // Create a caption element.
-      const caption = document.createElement('div');
-      caption.className = 'caption';
-      caption.textContent = `Bailo™ Teaser Design ${i}`;
-      
-      // Append image and caption to the container.
-      container.appendChild(img);
-      container.appendChild(caption);
-      
-      // Append the container to the gallery.
-      gallery.appendChild(container);
-    }
-
-    // Scroll-reveal effect using IntersectionObserver.
-    const galleryItems = document.querySelectorAll('.gallery-item');
-    const observerOptions = { threshold: 0.15 };
-    const revealObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('active');
-          observer.unobserve(entry.target);
+    /***********************
+     * SPACE BACKGROUND
+     * Subtle stars and shooting stars effect.
+     ***********************/
+    (function() {
+      const spaceCanvas = document.getElementById("spaceCanvas");
+      const ctx = spaceCanvas.getContext("2d");
+      let width, height;
+      function resize() {
+        width = spaceCanvas.width = window.innerWidth;
+        height = spaceCanvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+      const stars = [];
+      const numStars = 200;
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: Math.random() * 1.5,
+          o: Math.random() * 0.8 + 0.2
+        });
+      }
+      const shootingStars = [];
+      function animateSpace() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.fillRect(0, 0, width, height);
+        stars.forEach(star => {
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${star.o})`;
+          ctx.fill();
+        });
+        if (Math.random() < 0.01) {
+          shootingStars.push({
+            x: Math.random() * width,
+            y: Math.random() * height * 0.5,
+            length: 80 + Math.random() * 20,
+            vx: 10 + Math.random() * 10,
+            vy: 10 + Math.random() * 10,
+            o: 1
+          });
         }
-      });
-    }, observerOptions);
+        for (let i = shootingStars.length - 1; i >= 0; i--) {
+          const s = shootingStars[i];
+          s.x += s.vx;
+          s.y += s.vy;
+          s.o -= 0.02;
+          if (s.o <= 0) { shootingStars.splice(i, 1); continue; }
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x - s.length, s.y - s.length);
+          ctx.strokeStyle = `rgba(255,255,255,${s.o})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        requestAnimationFrame(animateSpace);
+      }
+      animateSpace();
+    })();
 
-    galleryItems.forEach(item => {
-      revealObserver.observe(item);
-    });
+    /***********************
+     * INTERACTIVE 3D ROTATION WITH EXPLOSION IMPULSES (MOON GRAVITY)
+     *
+     * - The logo starts front-on (0° rotation) with no initial spin.
+     * - Scheduled explosions occur (first after 3s, then every 10–20s) and user clicks spawn an explosion anywhere on the webpage.
+     * - Each explosion imparts an impulse to the spin.
+     * - Gravity is simulated with slight friction (moon gravity).
+     ***********************/
+    (function() {
+      const wrapper = document.getElementById("logoWrapper");
+      const container = document.getElementById("logoContainer");
+      const explosionCanvas = document.getElementById("explosionCanvas");
+      const expCtx = explosionCanvas.getContext("2d");
+      
+      // Ensure explosion canvas covers full window.
+      function resizeExplosion() {
+        explosionCanvas.width = window.innerWidth;
+        explosionCanvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resizeExplosion);
+      resizeExplosion();
+      
+      // Initial rotation: front-on.
+      let rotationX = 0, rotationY = 0;
+      // Initial spin velocity.
+      let velocityX = 0, velocityY = 0;
+      const minSpeed = 0.005; // Baseline minimal spin speed.
+      
+      // Simulate Moon gravity: slight friction.
+      const friction = 0.995;
+      
+      // Array to track explosion visual effects.
+      let explosions = []; // Each: { start, duration, maxRadius, x, y }
+      
+      // --- User Click to Spawn Explosion Anywhere ---
+      document.addEventListener("click", function(e) {
+        // Spawn explosion at click location.
+        triggerExplosionAt(e.clientX, e.clientY);
+      });
+      
+      // --- Explosion Impulse Functions ---
+      function triggerExplosion() {
+        // Explosion from a random edge.
+        const duration = 600; // ms
+        const maxRadius = 300;
+        const start = performance.now();
+        const sides = ["top", "bottom", "left", "right"];
+        const side = sides[Math.floor(Math.random() * sides.length)];
+        let explosionX, explosionY;
+        const expW = window.innerWidth;
+        const expH = window.innerHeight;
+        if (side === "top") {
+          explosionX = expW * (0.3 + Math.random() * 0.4);
+          explosionY = 0;
+        } else if (side === "bottom") {
+          explosionX = expW * (0.3 + Math.random() * 0.4);
+          explosionY = expH;
+        } else if (side === "left") {
+          explosionX = 0;
+          explosionY = expH * (0.3 + Math.random() * 0.4);
+        } else if (side === "right") {
+          explosionX = expW;
+          explosionY = expH * (0.3 + Math.random() * 0.4);
+        }
+        explosions.push({ start, duration, maxRadius, x: explosionX, y: explosionY });
+        
+        // Impulse from explosion toward logo center.
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const dx = centerX - explosionX;
+        const dy = centerY - explosionY;
+        const angle = Math.atan2(dy, dx);
+        // Reasonable impulse: 5× multiplier.
+        const impulse = (0.2 + Math.random() * 0.2) * 5;
+        velocityX += impulse * Math.cos(angle);
+        velocityY += impulse * Math.sin(angle);
+      }
+      
+      function triggerExplosionAt(clickX, clickY) {
+        const duration = 600; // ms
+        const maxRadius = 300;
+        const start = performance.now();
+        explosions.push({ start, duration, maxRadius, x: clickX, y: clickY });
+        
+        // Impulse from explosion toward logo center.
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const dx = centerX - clickX;
+        const dy = centerY - clickY;
+        const angle = Math.atan2(dy, dx);
+        const impulse = (0.2 + Math.random() * 0.2) * 5;
+        velocityX += impulse * Math.cos(angle);
+        velocityY += impulse * Math.sin(angle);
+      }
+      
+      // --- Scheduled Explosion Events ---
+      function scheduleExplosion() {
+        setTimeout(function firstExplosion() {
+          triggerExplosion();
+          function scheduleNext() {
+            const interval = 10000 + Math.random() * 10000; // 10–20s
+            setTimeout(() => { triggerExplosion(); scheduleNext(); }, interval);
+          }
+          scheduleNext();
+        }, 3000);
+      }
+      scheduleExplosion();
+      
+      // --- Explosion Visuals ---
+      function animateExplosions() {
+        expCtx.clearRect(0, 0, explosionCanvas.width, explosionCanvas.height);
+        const now = performance.now();
+        explosions = explosions.filter(exp => {
+          const elapsed = now - exp.start;
+          if (elapsed > exp.duration) return false;
+          const progress = elapsed / exp.duration;
+          const radius = progress * exp.maxRadius;
+          const opacity = 1 - progress;
+          expCtx.beginPath();
+          expCtx.arc(exp.x, exp.y, radius, 0, 2 * Math.PI);
+          const gradient = expCtx.createRadialGradient(exp.x, exp.y, radius * 0.3, exp.x, exp.y, radius);
+          gradient.addColorStop(0, `rgba(255,255,100,${opacity * 0.8})`);
+          gradient.addColorStop(1, `rgba(255,150,0,0)`);
+          expCtx.fillStyle = gradient;
+          expCtx.fill();
+          return true;
+        });
+        requestAnimationFrame(animateExplosions);
+      }
+      animateExplosions();
+      
+      // --- Rotation Animation (Moon Gravity) ---
+      function animateRotation() {
+        // Apply slight friction to simulate moon gravity.
+        velocityX *= friction;
+        velocityY *= friction;
+        let mag = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (mag < minSpeed) {
+          if (mag === 0) {
+            velocityX = minSpeed;
+            velocityY = 0;
+          } else {
+            const normX = velocityX / mag;
+            const normY = velocityY / mag;
+            velocityX = normX * minSpeed;
+            velocityY = normY * minSpeed;
+          }
+        }
+        rotationX += velocityX;
+        rotationY += velocityY;
+        container.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+        requestAnimationFrame(animateRotation);
+      }
+      animateRotation();
+    })();
+
+    /***********************
+     * MATRIX-FILLED LOGO EFFECT WITH MULTI-LAYER DEPTH
+     ***********************/
+    (function() {
+      const layerIds = ["layer0", "layer1", "layer2", "layer3", "layer4"];
+      const layers = [];
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=+{}[]|:;<>?,./".split("");
+      const fontSize = 20;
+      const logoText = "Bailo™";
+      layerIds.forEach(id => {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext("2d");
+        const cols = Math.floor(canvas.width / fontSize);
+        const drops = [];
+        for (let i = 0; i < cols; i++) {
+          drops[i] = Math.floor(Math.random() * canvas.height / fontSize);
+        }
+        layers.push({ canvas, ctx, cols, drops, fontSize });
+      });
+      function drawLayer(layer) {
+        const ctx = layer.ctx;
+        const canvas = layer.canvas;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0F0";
+        ctx.font = layer.fontSize + "px monospace";
+        for (let i = 0; i < layer.cols; i++) {
+          const text = chars[Math.floor(Math.random() * chars.length)];
+          const x = i * layer.fontSize;
+          const y = layer.drops[i] * layer.fontSize;
+          ctx.fillText(text, x, y);
+          if (y > canvas.height && Math.random() > 0.975) {
+            layer.drops[i] = 0;
+          }
+          layer.drops[i]++;
+        }
+        // Mask the matrix effect to the logo text shape.
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.fillStyle = "white";
+        ctx.font = "bold 320px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(logoText, canvas.width / 2, canvas.height / 2);
+        ctx.globalCompositeOperation = "source-over";
+      }
+      function animateMatrix() {
+        layers.forEach(layer => {
+          drawLayer(layer);
+        });
+        requestAnimationFrame(animateMatrix);
+      }
+      animateMatrix();
+    })();
   </script>
-  
 </body>
 </html>
