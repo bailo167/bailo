@@ -1,1 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morse Code Learning Game</title>
+  <style>
+    /* Global Styles and Dark Theme */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      overflow-x: hidden;
+      transition: background 0.3s;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    /* Button Styles */
+    .btn {
+      background: #1f1f1f;
+      border: none;
+      color: #e0e0e0;
+      padding: 15px 25px;
+      margin: 10px;
+      font-size: 1.2rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px #39ff14;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    /* Main Menu Styles */
+    #main-menu {
+      text-align: center;
+      animation: fadeIn 0.5s;
+    }
+    /* Grid for Learn Mode characters */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .grid-item {
+      background: #1f1f1f;
+      border-radius: 5px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      user-select: none;
+    }
+    .grid-item:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 10px #39ff14;
+    }
+    .grid-item.active {
+      animation: glow 0.5s;
+    }
+    /* On-screen Keyboard (for Quiz and Word Guess) */
+    .keyboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(35px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .key {
+      background: #1f1f1f;
+      padding: 10px;
+      text-align: center;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .key:hover {
+      background: #333;
+      transform: scale(1.05);
+    }
+    .key.disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    /* Scoreboard and Feedback */
+    .scoreboard, .feedback {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 1.2rem;
+    }
+    /* Word Guess Display (hidden word progress) */
+    .word-display {
+      font-size: 2rem;
+      letter-spacing: 10px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    /* Guess Input Display for Word Guess Mode */
+    #word-guess-input {
+      font-size: 1.8rem;
+      letter-spacing: 5px;
+      text-align: center;
+      margin-bottom: 10px;
+      display: block;
+    }
+    /* Fade in animation for screens */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    /* Glow animation for button feedback */
+    @keyframes glow {
+      0% { box-shadow: 0 0 0px #39ff14; }
+      50% { box-shadow: 0 0 15px #39ff14; }
+      100% { box-shadow: 0 0 0px #39ff14; }
+    }
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .btn {
+        font-size: 1rem;
+        padding: 10px 20px;
+      }
+      .grid-item {
+        padding: 10px;
+      }
+      .word-display, #word-guess-input {
+        font-size: 1.5rem;
+        letter-spacing: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Main Menu -->
+    <div id="main-menu">
+      <h1>Morse Code Learning Game</h1>
+      <button class="btn" id="learn-mode-btn">Learn Morse</button>
+      <button class="btn" id="quiz-mode-btn">Single Character Quiz</button>
+      <button class="btn" id="word-guess-mode-btn">Full Word Guess</button>
+    </div>
 
+    <!-- Learn Mode -->
+    <div id="learn-mode" class="hidden">
+      <h2>Learn Morse: Click a Letter or Number</h2>
+      <div class="grid" id="learn-grid">
+        <!-- Characters will be populated via JavaScript -->
+      </div>
+      <!-- Replay button for Learn mode -->
+      <button class="btn" id="learn-replay-btn" disabled>Hear Morse</button>
+      <button class="btn" id="back-from-learn">Back to Menu</button>
+    </div>
+
+    <!-- Quiz Mode -->
+    <div id="quiz-mode" class="hidden">
+      <h2>Single Character Quiz</h2>
+      <!-- Sub-mode selection -->
+      <div id="quiz-submode-selection">
+        <button class="btn" data-submode="letters">Letters Quiz</button>
+        <button class="btn" data-submode="digits">Digits Quiz</button>
+      </div>
+      <!-- Quiz game area -->
+      <div id="quiz-game" class="hidden">
+        <p class="scoreboard">Score: <span id="quiz-score">0</span></p>
+        <p class="feedback" id="quiz-feedback"></p>
+        <div class="keyboard" id="quiz-keyboard">
+          <!-- Keys will be populated dynamically -->
+        </div>
+        <!-- Replay button for Quiz mode -->
+        <button class="btn" id="quiz-replay-btn">Hear Morse</button>
+        <button class="btn" id="next-quiz-round" style="display:none;">Next</button>
+      </div>
+      <button class="btn" id="back-from-quiz" style="margin-top:20px;">Back to Menu</button>
+    </div>
+
+    <!-- Word Guess Mode -->
+    <div id="word-guess-mode" class="hidden">
+      <h2>Full Word Guess</h2>
+      <!-- Settings for speed and word length -->
+      <div id="word-guess-settings" style="text-align:center; margin-bottom:20px;">
+        <div>
+          <span>Speed:</span>
+          <label><input type="radio" name="speed" value="quarter"> 1/4 Speed</label>
+          <label><input type="radio" name="speed" value="half"> 1/2 Speed</label>
+          <label><input type="radio" name="speed" value="full" checked> Full Speed</label>
+        </div>
+        <div style="margin-top:10px;">
+          <span>Word Length:</span>
+          <label><input type="radio" name="wordLength" value="3" checked> 3 Letters</label>
+          <label><input type="radio" name="wordLength" value="4"> 4 Letters</label>
+          <label><input type="radio" name="wordLength" value="5"> 5 Letters</label>
+          <label><input type="radio" name="wordLength" value="6"> 6 Letters</label>
+        </div>
+      </div>
+      <p class="feedback" id="word-feedback"></p>
+      <!-- Hidden word progress: shows underscores and later revealed letters -->
+      <div class="word-display" id="word-display">
+        <!-- Initially underscores only -->
+      </div>
+      <!-- On-screen keyboard for word guess -->
+      <div class="keyboard" id="word-keyboard">
+        <!-- A-Z keys will be added via JavaScript -->
+      </div>
+      <!-- Display user's current guess -->
+      <p style="text-align:center;">Your Guess: <span id="word-guess-input"></span></p>
+      <!-- Buttons for backspace, clear, submit, and replay -->
+      <div style="text-align:center;">
+        <button class="btn" id="word-backspace-btn">Backspace</button>
+        <button class="btn" id="word-clear-btn">Clear</button>
+        <button class="btn" id="word-submit-btn">Submit</button>
+        <button class="btn" id="word-replay-btn">Hear Word</button>
+      </div>
+      <p class="scoreboard" style="margin-top:10px;">Remaining Attempts: <span id="word-attempts">6</span></p>
+      <button class="btn" id="new-word-btn" style="display:none;">Next Word</button>
+      <button class="btn" id="back-from-word" style="margin-top:20px;">Back to Menu</button>
+    </div>
+  </div>
+
+  <script>
+    /**********************
+     * Morse Code Mapping *
+     **********************/
+    const morseMapping = {
+      'A': ".-",
+      'B': "-...",
+      'C': "-.-.",
+      'D': "-..",
+      'E': ".",
+      'F': "..-.",
+      'G': "--.",
+      'H': "....",
+      'I': "..",
+      'J': ".---",
+      'K': "-.-",
+      'L': ".-..",
+      'M': "--",
+      'N': "-.",
+      'O': "---",
+      'P': ".--.",
+      'Q': "--.-",
+      'R': ".-.",
+      'S': "...",
+      'T': "-",
+      'U': "..-",
+      'V': "...-",
+      'W': ".--",
+      'X': "-..-",
+      'Y': "-.--",
+      'Z': "--..",
+      '0': "-----",
+      '1': ".----",
+      '2': "..---",
+      '3': "...--",
+      '4': "....-",
+      '5': ".....",
+      '6': "-....",
+      '7': "--...",
+      '8': "---..",
+      '9': "----."
+    };
+
+    /*********************************
+     * Word Banks (50 words each)    *
+     *********************************/
+    const words3 = [
+      "CAT","DOG","BAT","RAT","HAT","CAR","BUS","FOX","OWL","ANT",
+      "BEE","COW","PIG","APE","EEL","EMU","SKY","SEA","JAM","MAP",
+      "KEY","BOX","CUP","POT","BED","ART","MAN","GAL","GOD","ICE",
+      "HOT","FIX","RUN","SUN","DAY","LIP","ARM","LEG","EAR","EYE",
+      "RIB","TOE","OIL","FUN","ZOO","GEM","JET","RID","NOW"
+    ];
+    const words4 = [
+      "LOVE","TIME","WORK","PLAY","GAME","CODE","WORD","NOTE","STAR","MOON",
+      "RAIN","SNOW","WIND","FIRE","TREE","ROAD","LIFE","HERO","KING","SHIP",
+      "BIKE","BALL","DOOR","COLD","WARM","COOL","HEAT","EASY","HARD","RICH",
+      "POOR","BLUE","GOLD","SILK","MINT","NEON","DUSK","DAWN","NOON","EVEN",
+      "BEST","REAL","FAIR","WISE","GOOD","NICE","SAFE","VAST","OPEN","PURE"
+    ];
+    const words5 = [
+      "APPLE","GRAPE","PLANT","HEART","LIGHT","SOUND","MUSIC","DREAM","SMILE","PEACE",
+      "POWER","BRAVE","HAPPY","FUNNY","BROWN","BLACK","WHITE","GREEN","CRISP","FRESH",
+      "QUICK","SUGAR","SALTY","SPICY","TASTE","FLAME","CHARM","GRACE","SHINE","CHILL",
+      "BLISS","VIVID","QUIET","NOISE","STORM","CLOUD","RIVER","OCEAN","BEACH","VAPOR",
+      "SMART","BRISK","SLEEK","POLAR","SPARK","FLASH","MIGHT","MAGIC","TRUTH","TRUST"
+    ];
+    const words6 = [
+      "LETTER","NUMBER","PUZZLE","MASTER","SKILLS","REPEAT","TUNING","SIGNAL","CIPHER","PATTER",
+      "TIMING","RHYTHM","STRONG","FASTER","SLOWER","SPEEDY","SECRET","EFFECT","NOTION","METHOD",
+      "SYSTEM","PENCIL","BRIGHT","SHINED","RIDDLE","ANSWER","CASING","MODULE","PIXELS","KETTLE",
+      "FIDDLE","JUMBLE","SQUARE","CIRCLE","ORANGE","PURPLE","MARBLE","STAMPS","RECORD","WINDOW",
+      "BUTTON","BUFFER","SERVER","SOCKET","LINEAR","SINGER","RHYMER","CHARGE","ALERTS","TURING"
+    ];
+
+    /**********************************
+     * Audio Playback (Web Audio API) *
+     **********************************/
+    // Create an AudioContext for modern browsers.
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Base timing constants (in ms)
+    const baseDot = 200;
+    const baseDash = 600;
+    const baseIntra = 200;    // gap between dots/dashes in a letter
+    const baseInter = 600;    // gap between letters
+
+    // Global playback multiplier (1 = full speed, 2 = 1/2 speed, 4 = 1/4 speed)
+    let playbackMultiplier = 1;
+
+    // Global array to store timeouts for word playback
+    let currentWordTimeouts = [];
+
+    // Clears any scheduled timeouts for word playback.
+    function clearWordTimeouts() {
+      currentWordTimeouts.forEach(timeoutID => clearTimeout(timeoutID));
+      currentWordTimeouts = [];
+    }
+
+    // Play a tone for a given duration (in ms)
+    function beep(duration) {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.frequency.value = 600; // in Hz
+      oscillator.type = "sine";
+      oscillator.start();
+      setTimeout(() => { oscillator.stop(); }, duration);
+    }
+
+    // Play a Morse sequence (e.g., ".-" for A) using scheduling.
+    function playMorseSequence(sequence, callback) {
+      let time = 0;
+      const dotTime = baseDot * playbackMultiplier;
+      const dashTime = baseDash * playbackMultiplier;
+      const intraTime = baseIntra * playbackMultiplier;
+      for (let i = 0; i < sequence.length; i++) {
+        const symbol = sequence[i];
+        if (symbol === '.') {
+          let id = setTimeout(() => { beep(dotTime); }, time);
+          currentWordTimeouts.push(id);
+          time += dotTime;
+        } else if (symbol === '-') {
+          let id = setTimeout(() => { beep(dashTime); }, time);
+          currentWordTimeouts.push(id);
+          time += dashTime;
+        }
+        if (i < sequence.length - 1) {
+          time += intraTime;
+        }
+      }
+      if (callback) {
+        let id = setTimeout(callback, time);
+        currentWordTimeouts.push(id);
+      }
+    }
+
+    // Compute total duration of a Morse sequence (in ms)
+    function getMorseDuration(sequence) {
+      let total = 0;
+      const dotTime = baseDot * playbackMultiplier;
+      const dashTime = baseDash * playbackMultiplier;
+      const intraTime = baseIntra * playbackMultiplier;
+      for (let i = 0; i < sequence.length; i++) {
+        total += (sequence[i] === '.' ? dotTime : dashTime);
+        if (i < sequence.length - 1) total += intraTime;
+      }
+      return total;
+    }
+
+    // Play Morse for a full word by chaining each letter’s sequence.
+    // If already playing, previous timeouts are cleared.
+    function playMorseForWord(word) {
+      clearWordTimeouts();
+      let delay = 0;
+      for (let letter of word.split('')) {
+        const code = morseMapping[letter];
+        if (code) {
+          let id = setTimeout(() => { playMorseSequence(code); }, delay);
+          currentWordTimeouts.push(id);
+          delay += getMorseDuration(code) + (baseInter * playbackMultiplier);
+        }
+      }
+    }
+
+    /**************************
+     * Global State Variables *
+     **************************/
+    let lastLearnLetter = null; // For Learn mode replay
+    let currentQuizAnswer = '';
+    let currentQuizSubmode = '';
+    let quizScore = 0;
+    let currentWord = '';
+    let remainingAttempts = 6;
+    let guessedWord = ""; // User’s current guess (letters chosen)
+    let wordProgress = []; // Array holding revealed letters (or '_' for unrevealed)
+
+    // Global settings for Word Guess Mode:
+    let selectedWordLength = "3"; // default word length
+
+    /********************
+     * Utility Functions *
+     ********************/
+    // Add a temporary 'active' class for a glowing effect.
+    function animateKey(element) {
+      element.classList.add('active');
+      setTimeout(() => { element.classList.remove('active'); }, 500);
+    }
+    // Show a container.
+    function showSection(section) {
+      section.classList.remove('hidden');
+      section.style.animation = 'fadeIn 0.5s';
+    }
+
+    /********************
+     * Main Menu Logic  *
+     ********************/
+    const mainMenu = document.getElementById('main-menu');
+    const learnModeDiv = document.getElementById('learn-mode');
+    const quizModeDiv = document.getElementById('quiz-mode');
+    const wordGuessDiv = document.getElementById('word-guess-mode');
+
+    document.getElementById('learn-mode-btn').addEventListener('click', () => {
+      mainMenu.classList.add('hidden');
+      showSection(learnModeDiv);
+    });
+    document.getElementById('quiz-mode-btn').addEventListener('click', () => {
+      mainMenu.classList.add('hidden');
+      showSection(quizModeDiv);
+    });
+    document.getElementById('word-guess-mode-btn').addEventListener('click', () => {
+      mainMenu.classList.add('hidden');
+      showSection(wordGuessDiv);
+      initWordGuess();
+    });
+
+    // Back buttons
+    document.getElementById('back-from-learn').addEventListener('click', () => {
+      learnModeDiv.classList.add('hidden');
+      mainMenu.classList.remove('hidden');
+    });
+    document.getElementById('back-from-quiz').addEventListener('click', () => {
+      quizModeDiv.classList.add('hidden');
+      document.getElementById('quiz-game').classList.add('hidden');
+      document.getElementById('quiz-submode-selection').classList.remove('hidden');
+      quizScore = 0;
+      document.getElementById('quiz-score').innerText = quizScore;
+      mainMenu.classList.remove('hidden');
+    });
+    document.getElementById('back-from-word').addEventListener('click', () => {
+      wordGuessDiv.classList.add('hidden');
+      mainMenu.classList.remove('hidden');
+    });
+
+    /********************
+     * Learn Mode Logic *
+     ********************/
+    const learnGrid = document.getElementById('learn-grid');
+    const learnChars = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'0123456789'];
+    const learnReplayBtn = document.getElementById('learn-replay-btn');
+
+    // Populate grid with characters
+    learnChars.forEach(char => {
+      const div = document.createElement('div');
+      div.className = 'grid-item';
+      div.innerText = char;
+      div.addEventListener('click', () => {
+        lastLearnLetter = char;
+        if (morseMapping[char]) {
+          playMorseSequence(morseMapping[char]);
+          animateKey(div);
+          learnReplayBtn.disabled = false;
+        }
+      });
+      learnGrid.appendChild(div);
+    });
+    learnReplayBtn.addEventListener('click', () => {
+      if (lastLearnLetter && morseMapping[lastLearnLetter]) {
+        playMorseSequence(morseMapping[lastLearnLetter]);
+      }
+    });
+
+    /********************
+     * Quiz Mode Logic  *
+     ********************/
+    const quizSubmodeSelection = document.getElementById('quiz-submode-selection');
+    const quizGameDiv = document.getElementById('quiz-game');
+    const quizKeyboard = document.getElementById('quiz-keyboard');
+    const quizFeedback = document.getElementById('quiz-feedback');
+    const quizScoreDisplay = document.getElementById('quiz-score');
+    const nextQuizRoundBtn = document.getElementById('next-quiz-round');
+    const quizReplayBtn = document.getElementById('quiz-replay-btn');
+
+    quizSubmodeSelection.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentQuizSubmode = btn.getAttribute('data-submode');
+        quizScore = 0;
+        quizScoreDisplay.innerText = quizScore;
+        quizFeedback.innerText = '';
+        quizSubmodeSelection.classList.add('hidden');
+        showSection(quizGameDiv);
+        setupQuizKeyboard();
+        startQuizRound();
+      });
+    });
+    function setupQuizKeyboard() {
+      quizKeyboard.innerHTML = '';
+      let keys = (currentQuizSubmode === 'letters') ? [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'] : [...'0123456789'];
+      keys.forEach(key => {
+        const keyDiv = document.createElement('div');
+        keyDiv.className = 'key';
+        keyDiv.innerText = key;
+        keyDiv.addEventListener('click', () => {
+          animateKey(keyDiv);
+          checkQuizAnswer(key);
+        });
+        quizKeyboard.appendChild(keyDiv);
+      });
+    }
+    function startQuizRound() {
+      let possible = (currentQuizSubmode === 'letters') ? [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'] : [...'0123456789'];
+      currentQuizAnswer = possible[Math.floor(Math.random() * possible.length)];
+      if (morseMapping[currentQuizAnswer]) playMorseSequence(morseMapping[currentQuizAnswer]);
+      quizFeedback.innerText = 'Listen to the Morse code and select your answer.';
+      nextQuizRoundBtn.style.display = 'none';
+    }
+    function checkQuizAnswer(answer) {
+      if (answer === currentQuizAnswer) {
+        quizFeedback.innerText = 'Correct!';
+        quizScore++;
+        quizScoreDisplay.innerText = quizScore;
+      } else {
+        quizFeedback.innerText = `Incorrect! The correct answer was ${currentQuizAnswer}.`;
+      }
+      Array.from(quizKeyboard.children).forEach(key => { key.classList.add('disabled'); });
+      nextQuizRoundBtn.style.display = 'inline-block';
+    }
+    quizReplayBtn.addEventListener('click', () => {
+      if (morseMapping[currentQuizAnswer]) playMorseSequence(morseMapping[currentQuizAnswer]);
+    });
+    nextQuizRoundBtn.addEventListener('click', () => {
+      Array.from(quizKeyboard.children).forEach(key => { key.classList.remove('disabled'); });
+      startQuizRound();
+    });
+
+    /**********************************
+     * Word Guess Mode Logic & Settings *
+     **********************************/
+    const wordFeedback = document.getElementById('word-feedback');
+    const wordDisplay = document.getElementById('word-display');
+    const wordKeyboard = document.getElementById('word-keyboard');
+    const wordAttemptsDisplay = document.getElementById('word-attempts');
+    const newWordBtn = document.getElementById('new-word-btn');
+    const wordReplayBtn = document.getElementById('word-replay-btn');
+    const wordGuessInputDisplay = document.getElementById('word-guess-input');
+    const wordBackspaceBtn = document.getElementById('word-backspace-btn');
+    const wordClearBtn = document.getElementById('word-clear-btn');
+    const wordSubmitBtn = document.getElementById('word-submit-btn');
+
+    // Global settings UI
+    const speedRadios = document.getElementsByName("speed");
+    const wordLengthRadios = document.getElementsByName("wordLength");
+
+    speedRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const value = e.target.value;
+        if (value === "quarter") playbackMultiplier = 4;   // 1/4 speed
+        else if (value === "half") playbackMultiplier = 2;   // 1/2 speed
+        else if (value === "full") playbackMultiplier = 1;   // Full speed
+      });
+    });
+    wordLengthRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        selectedWordLength = e.target.value;
+      });
+    });
+
+    // Initialize Word Guess game.
+    function initWordGuess() {
+      wordFeedback.innerText = '';
+      newWordBtn.style.display = 'none';
+      remainingAttempts = 6;
+      wordAttemptsDisplay.innerText = remainingAttempts;
+      guessedWord = "";
+      updateWordGuessInput();
+      // Pick a word from the appropriate bank.
+      if (selectedWordLength === "3") {
+        currentWord = words3[Math.floor(Math.random() * words3.length)];
+      } else if (selectedWordLength === "4") {
+        currentWord = words4[Math.floor(Math.random() * words4.length)];
+      } else if (selectedWordLength === "5") {
+        currentWord = words5[Math.floor(Math.random() * words5.length)];
+      } else if (selectedWordLength === "6") {
+        currentWord = words6[Math.floor(Math.random() * words6.length)];
+      }
+      // Initialize progress to underscores.
+      wordProgress = Array(currentWord.length).fill('_');
+      wordDisplay.innerText = wordProgress.join(' ');
+      setupWordKeyboard();
+      playMorseForWord(currentWord);
+    }
+    // Setup on-screen A-Z keyboard for Word Guess.
+    function setupWordKeyboard() {
+      wordKeyboard.innerHTML = '';
+      [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].forEach(letter => {
+        const keyDiv = document.createElement('div');
+        keyDiv.className = 'key';
+        keyDiv.innerText = letter;
+        keyDiv.addEventListener('click', () => {
+          if (guessedWord.length < currentWord.length) {
+            guessedWord += letter;
+            updateWordGuessInput();
+            animateKey(keyDiv);
+          }
+        });
+        wordKeyboard.appendChild(keyDiv);
+      });
+    }
+    // Update the user's guess display.
+    function updateWordGuessInput() {
+      wordGuessInputDisplay.innerText = guessedWord;
+    }
+    // Backspace removes last character.
+    wordBackspaceBtn.addEventListener('click', () => {
+      guessedWord = guessedWord.slice(0, -1);
+      updateWordGuessInput();
+    });
+    // Clear resets the guess.
+    wordClearBtn.addEventListener('click', () => {
+      guessedWord = "";
+      updateWordGuessInput();
+    });
+    // On Submit, compare the guess to the target word.
+    // For each letter that is correct in its position and not yet revealed, update wordProgress.
+    wordSubmitBtn.addEventListener('click', () => {
+      if (guessedWord.length !== currentWord.length) {
+        wordFeedback.innerText = 'Please complete your guess before submitting.';
+        return;
+      }
+      // Update progress based on correct letters.
+      for (let i = 0; i < currentWord.length; i++) {
+        if (guessedWord[i] === currentWord[i]) {
+          wordProgress[i] = currentWord[i];
+        }
+      }
+      wordDisplay.innerText = wordProgress.join(' ');
+      if (wordProgress.join('') === currentWord) {
+        wordFeedback.innerText = 'Congratulations! You guessed the word!';
+        disableWordKeyboard();
+        newWordBtn.style.display = 'inline-block';
+      } else {
+        remainingAttempts--;
+        wordAttemptsDisplay.innerText = remainingAttempts;
+        wordFeedback.innerText = 'Incorrect guess. Partial progress updated.';
+        if (remainingAttempts <= 0) {
+          wordFeedback.innerText = `Game over! The word was hidden.`;
+          disableWordKeyboard();
+          newWordBtn.style.display = 'inline-block';
+        }
+      }
+      guessedWord = "";
+      updateWordGuessInput();
+    });
+    // Disable the word keyboard.
+    function disableWordKeyboard() {
+      Array.from(wordKeyboard.children).forEach(key => {
+        key.classList.add('disabled');
+      });
+    }
+    // Replay button for Word Guess mode.
+    wordReplayBtn.addEventListener('click', () => {
+      playMorseForWord(currentWord);
+    });
+    newWordBtn.addEventListener('click', () => { initWordGuess(); });
+  </script>
+</body>
+</html>
