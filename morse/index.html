@@ -17,6 +17,7 @@
       color: #e0e0e0;
       overflow-x: hidden;
       transition: background 0.3s;
+      padding-bottom: 220px; /* leave space for side panels */
     }
     h1, h2 {
       text-align: center;
@@ -107,7 +108,7 @@
       margin-top: 15px;
       font-size: 1.2rem;
     }
-    /* Word Guess Display (hidden word progress) */
+    /* Word Guess Display */
     .word-display {
       font-size: 2rem;
       letter-spacing: 10px;
@@ -147,6 +148,58 @@
         letter-spacing: 5px;
       }
     }
+    /* Side Panels for Morse Tree and Notepad */
+    .side-panel {
+      position: fixed;
+      bottom: 0;
+      background-color: #1f1f1f;
+      color: #e0e0e0;
+      border: 1px solid #39ff14;
+      z-index: 1000;
+      overflow: hidden;
+      transition: width 0.3s ease;
+    }
+    /* Left panel: Morse Tree */
+    #morse-tree-panel {
+      left: 0;
+      width: 30%;
+      height: 40%;
+    }
+    /* Right panel: Notepad */
+    #notepad-panel {
+      right: 0;
+      width: 30%;
+      height: 40%;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #121212;
+      padding: 5px;
+      border-bottom: 1px solid #39ff14;
+      height: 40px; /* Fixed header height */
+      overflow: visible;
+    }
+    .panel-content {
+      padding: 5px;
+      height: calc(100% - 40px);
+    }
+    #notepad-textarea {
+      width: 100%;
+      height: 100%;
+      background-color: #121212;
+      color: #e0e0e0;
+      border: none;
+      resize: none;
+    }
+    /* Collapsed state for side panels: set width to 120px so header remains fully visible */
+    .side-panel.collapsed {
+      width: 120px !important;
+    }
+    .side-panel.collapsed .panel-content {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -163,9 +216,8 @@
     <div id="learn-mode" class="hidden">
       <h2>Learn Morse: Click a Letter or Number</h2>
       <div class="grid" id="learn-grid">
-        <!-- Characters will be populated via JavaScript -->
+        <!-- Characters populated via JavaScript -->
       </div>
-      <!-- Replay button for Learn mode -->
       <button class="btn" id="learn-replay-btn" disabled>Hear Morse</button>
       <button class="btn" id="back-from-learn">Back to Menu</button>
     </div>
@@ -173,19 +225,16 @@
     <!-- Quiz Mode -->
     <div id="quiz-mode" class="hidden">
       <h2>Single Character Quiz</h2>
-      <!-- Sub-mode selection -->
       <div id="quiz-submode-selection">
         <button class="btn" data-submode="letters">Letters Quiz</button>
         <button class="btn" data-submode="digits">Digits Quiz</button>
       </div>
-      <!-- Quiz game area -->
       <div id="quiz-game" class="hidden">
         <p class="scoreboard">Score: <span id="quiz-score">0</span></p>
         <p class="feedback" id="quiz-feedback"></p>
         <div class="keyboard" id="quiz-keyboard">
-          <!-- Keys will be populated dynamically -->
+          <!-- Keys populated dynamically -->
         </div>
-        <!-- Replay button for Quiz mode -->
         <button class="btn" id="quiz-replay-btn">Hear Morse</button>
         <button class="btn" id="next-quiz-round" style="display:none;">Next</button>
       </div>
@@ -195,7 +244,6 @@
     <!-- Word Guess Mode -->
     <div id="word-guess-mode" class="hidden">
       <h2>Full Word Guess</h2>
-      <!-- Settings for speed and word length -->
       <div id="word-guess-settings" style="text-align:center; margin-bottom:20px;">
         <div>
           <span>Speed:</span>
@@ -212,17 +260,13 @@
         </div>
       </div>
       <p class="feedback" id="word-feedback"></p>
-      <!-- Hidden word progress: shows underscores and later revealed letters -->
       <div class="word-display" id="word-display">
-        <!-- Initially underscores only -->
+        <!-- Hidden progress (underscores) -->
       </div>
-      <!-- On-screen keyboard for word guess -->
       <div class="keyboard" id="word-keyboard">
-        <!-- A-Z keys will be added via JavaScript -->
+        <!-- A-Z keys populated via JavaScript -->
       </div>
-      <!-- Display user's current guess -->
       <p style="text-align:center;">Your Guess: <span id="word-guess-input"></span></p>
-      <!-- Buttons for backspace, clear, submit, and replay -->
       <div style="text-align:center;">
         <button class="btn" id="word-backspace-btn">Backspace</button>
         <button class="btn" id="word-clear-btn">Clear</button>
@@ -232,6 +276,27 @@
       <p class="scoreboard" style="margin-top:10px;">Remaining Attempts: <span id="word-attempts">6</span></p>
       <button class="btn" id="new-word-btn" style="display:none;">Next Word</button>
       <button class="btn" id="back-from-word" style="margin-top:20px;">Back to Menu</button>
+    </div>
+  </div>
+
+  <!-- Side Panels -->
+  <div id="morse-tree-panel" class="side-panel">
+    <div class="panel-header">
+      <span id="morse-tree-title">Morse Code Tree</span>
+      <button id="toggle-morse-tree" class="btn" style="padding:5px; font-size:0.8rem;">Hide</button>
+    </div>
+    <div class="panel-content">
+      <img src="https://matrix207.github.io/assets/image/posts/Morse-code-tree.svg" alt="Morse Code Tree" style="width:100%; height:auto;" />
+    </div>
+  </div>
+
+  <div id="notepad-panel" class="side-panel">
+    <div class="panel-header">
+      <span>Notepad</span>
+      <button id="toggle-notepad" class="btn" style="padding:5px; font-size:0.8rem;">Hide</button>
+    </div>
+    <div class="panel-content">
+      <textarea id="notepad-textarea" placeholder="Your notes here..."></textarea>
     </div>
   </div>
 
@@ -313,40 +378,25 @@
     /**********************************
      * Audio Playback (Web Audio API) *
      **********************************/
-    // Create an AudioContext for modern browsers.
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    // Base timing constants (in ms)
-    const baseDot = 200;
-    const baseDash = 600;
-    const baseIntra = 200;    // gap between dots/dashes in a letter
-    const baseInter = 600;    // gap between letters
-
-    // Global playback multiplier (1 = full speed, 2 = 1/2 speed, 4 = 1/4 speed)
+    const baseDot = 200, baseDash = 600, baseIntra = 200, baseInter = 600;
+    // Playback multiplier: 1 = full speed, 2 = 1/2 speed, 4 = 1/4 speed.
     let playbackMultiplier = 1;
-
-    // Global array to store timeouts for word playback
     let currentWordTimeouts = [];
-
-    // Clears any scheduled timeouts for word playback.
     function clearWordTimeouts() {
-      currentWordTimeouts.forEach(timeoutID => clearTimeout(timeoutID));
+      currentWordTimeouts.forEach(id => clearTimeout(id));
       currentWordTimeouts = [];
     }
-
-    // Play a tone for a given duration (in ms)
     function beep(duration) {
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillator.frequency.value = 600; // in Hz
-      oscillator.type = "sine";
-      oscillator.start();
-      setTimeout(() => { oscillator.stop(); }, duration);
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = 600;
+      osc.type = "sine";
+      osc.start();
+      setTimeout(() => { osc.stop(); }, duration);
     }
-
-    // Play a Morse sequence (e.g., ".-" for A) using scheduling.
     function playMorseSequence(sequence, callback) {
       let time = 0;
       const dotTime = baseDot * playbackMultiplier;
@@ -372,8 +422,6 @@
         currentWordTimeouts.push(id);
       }
     }
-
-    // Compute total duration of a Morse sequence (in ms)
     function getMorseDuration(sequence) {
       let total = 0;
       const dotTime = baseDot * playbackMultiplier;
@@ -385,9 +433,6 @@
       }
       return total;
     }
-
-    // Play Morse for a full word by chaining each letter’s sequence.
-    // If already playing, previous timeouts are cleared.
     function playMorseForWord(word) {
       clearWordTimeouts();
       let delay = 0;
@@ -404,27 +449,23 @@
     /**************************
      * Global State Variables *
      **************************/
-    let lastLearnLetter = null; // For Learn mode replay
+    let lastLearnLetter = null;
     let currentQuizAnswer = '';
     let currentQuizSubmode = '';
     let quizScore = 0;
     let currentWord = '';
     let remainingAttempts = 6;
-    let guessedWord = ""; // User’s current guess (letters chosen)
-    let wordProgress = []; // Array holding revealed letters (or '_' for unrevealed)
-
-    // Global settings for Word Guess Mode:
-    let selectedWordLength = "3"; // default word length
+    let guessedWord = "";
+    let wordProgress = [];
+    let selectedWordLength = "3";
 
     /********************
      * Utility Functions *
      ********************/
-    // Add a temporary 'active' class for a glowing effect.
-    function animateKey(element) {
-      element.classList.add('active');
-      setTimeout(() => { element.classList.remove('active'); }, 500);
+    function animateKey(el) {
+      el.classList.add('active');
+      setTimeout(() => { el.classList.remove('active'); }, 500);
     }
-    // Show a container.
     function showSection(section) {
       section.classList.remove('hidden');
       section.style.animation = 'fadeIn 0.5s';
@@ -437,7 +478,6 @@
     const learnModeDiv = document.getElementById('learn-mode');
     const quizModeDiv = document.getElementById('quiz-mode');
     const wordGuessDiv = document.getElementById('word-guess-mode');
-
     document.getElementById('learn-mode-btn').addEventListener('click', () => {
       mainMenu.classList.add('hidden');
       showSection(learnModeDiv);
@@ -451,8 +491,6 @@
       showSection(wordGuessDiv);
       initWordGuess();
     });
-
-    // Back buttons
     document.getElementById('back-from-learn').addEventListener('click', () => {
       learnModeDiv.classList.add('hidden');
       mainMenu.classList.remove('hidden');
@@ -476,8 +514,6 @@
     const learnGrid = document.getElementById('learn-grid');
     const learnChars = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'0123456789'];
     const learnReplayBtn = document.getElementById('learn-replay-btn');
-
-    // Populate grid with characters
     learnChars.forEach(char => {
       const div = document.createElement('div');
       div.className = 'grid-item';
@@ -508,7 +544,6 @@
     const quizScoreDisplay = document.getElementById('quiz-score');
     const nextQuizRoundBtn = document.getElementById('next-quiz-round');
     const quizReplayBtn = document.getElementById('quiz-replay-btn');
-
     quizSubmodeSelection.querySelectorAll('button').forEach(btn => {
       btn.addEventListener('click', () => {
         currentQuizSubmode = btn.getAttribute('data-submode');
@@ -574,17 +609,14 @@
     const wordBackspaceBtn = document.getElementById('word-backspace-btn');
     const wordClearBtn = document.getElementById('word-clear-btn');
     const wordSubmitBtn = document.getElementById('word-submit-btn');
-
-    // Global settings UI
     const speedRadios = document.getElementsByName("speed");
     const wordLengthRadios = document.getElementsByName("wordLength");
-
     speedRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
         const value = e.target.value;
-        if (value === "quarter") playbackMultiplier = 4;   // 1/4 speed
-        else if (value === "half") playbackMultiplier = 2;   // 1/2 speed
-        else if (value === "full") playbackMultiplier = 1;   // Full speed
+        if (value === "quarter") playbackMultiplier = 4;
+        else if (value === "half") playbackMultiplier = 2;
+        else if (value === "full") playbackMultiplier = 1;
       });
     });
     wordLengthRadios.forEach(radio => {
@@ -592,8 +624,6 @@
         selectedWordLength = e.target.value;
       });
     });
-
-    // Initialize Word Guess game.
     function initWordGuess() {
       wordFeedback.innerText = '';
       newWordBtn.style.display = 'none';
@@ -601,7 +631,6 @@
       wordAttemptsDisplay.innerText = remainingAttempts;
       guessedWord = "";
       updateWordGuessInput();
-      // Pick a word from the appropriate bank.
       if (selectedWordLength === "3") {
         currentWord = words3[Math.floor(Math.random() * words3.length)];
       } else if (selectedWordLength === "4") {
@@ -611,13 +640,11 @@
       } else if (selectedWordLength === "6") {
         currentWord = words6[Math.floor(Math.random() * words6.length)];
       }
-      // Initialize progress to underscores.
       wordProgress = Array(currentWord.length).fill('_');
       wordDisplay.innerText = wordProgress.join(' ');
       setupWordKeyboard();
       playMorseForWord(currentWord);
     }
-    // Setup on-screen A-Z keyboard for Word Guess.
     function setupWordKeyboard() {
       wordKeyboard.innerHTML = '';
       [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].forEach(letter => {
@@ -634,28 +661,22 @@
         wordKeyboard.appendChild(keyDiv);
       });
     }
-    // Update the user's guess display.
     function updateWordGuessInput() {
       wordGuessInputDisplay.innerText = guessedWord;
     }
-    // Backspace removes last character.
     wordBackspaceBtn.addEventListener('click', () => {
       guessedWord = guessedWord.slice(0, -1);
       updateWordGuessInput();
     });
-    // Clear resets the guess.
     wordClearBtn.addEventListener('click', () => {
       guessedWord = "";
       updateWordGuessInput();
     });
-    // On Submit, compare the guess to the target word.
-    // For each letter that is correct in its position and not yet revealed, update wordProgress.
     wordSubmitBtn.addEventListener('click', () => {
       if (guessedWord.length !== currentWord.length) {
         wordFeedback.innerText = 'Please complete your guess before submitting.';
         return;
       }
-      // Update progress based on correct letters.
       for (let i = 0; i < currentWord.length; i++) {
         if (guessedWord[i] === currentWord[i]) {
           wordProgress[i] = currentWord[i];
@@ -679,17 +700,40 @@
       guessedWord = "";
       updateWordGuessInput();
     });
-    // Disable the word keyboard.
     function disableWordKeyboard() {
-      Array.from(wordKeyboard.children).forEach(key => {
-        key.classList.add('disabled');
-      });
+      Array.from(wordKeyboard.children).forEach(key => { key.classList.add('disabled'); });
     }
-    // Replay button for Word Guess mode.
     wordReplayBtn.addEventListener('click', () => {
       playMorseForWord(currentWord);
     });
     newWordBtn.addEventListener('click', () => { initWordGuess(); });
+
+    /********************
+     * Side Panel Toggles *
+     ********************/
+    document.getElementById('toggle-morse-tree').addEventListener('click', function() {
+      const panel = document.getElementById('morse-tree-panel');
+      const titleSpan = document.getElementById('morse-tree-title');
+      if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        titleSpan.innerText = "Morse Code Tree";
+        this.innerText = 'Hide';
+      } else {
+        panel.classList.add('collapsed');
+        titleSpan.innerText = "MCT";
+        this.innerText = 'Show';
+      }
+    });
+    document.getElementById('toggle-notepad').addEventListener('click', function() {
+      const panel = document.getElementById('notepad-panel');
+      if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        this.innerText = 'Hide';
+      } else {
+        panel.classList.add('collapsed');
+        this.innerText = 'Show';
+      }
+    });
   </script>
 </body>
 </html>
