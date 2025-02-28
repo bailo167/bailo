@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plinko Game</title>
+  <!-- Google Fonts for styling -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+  <!-- Matter.js physics library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <style>
+    /* Global styles */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #f0f0f0;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark-mode {
+      background: #1e1e1e;
+      color: #ddd;
+    }
+    .container {
+      max-width: 900px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 5px 0 15px;
+    }
+    /* Controls & Scoreboard */
+    .controls, .scoreboard {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .controls > div, .scoreboard > p {
+      margin: 5px;
+    }
+    .controls input {
+      padding: 8px;
+      font-size: 1rem;
+      width: 140px;
+    }
+    .controls button {
+      padding: 8px 12px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      background: #007bff;
+      color: #fff;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .controls button:hover {
+      background: #0056b3;
+    }
+    .scoreboard {
+      flex-direction: column;
+      align-items: center;
+    }
+    /* Game container styles */
+    #game-container {
+      margin: 0 auto;
+      border: 2px solid #333;
+      background: #fff;
+      position: relative;
+      width: 600px;
+      height: 800px;
+    }
+    /* Dark mode adjustments */
+    body.dark-mode #game-container {
+      border-color: #ddd;
+      background: #333;
+    }
+    /* Responsive adjustments */
+    @media (max-width: 640px) {
+      #game-container {
+        width: 100%;
+        height: 70vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Plinko Game</h1>
+    <p>Deposit fake money, place your bet, and drop the ball to see your winnings!</p>
+    <div class="controls">
+      <div class="deposit">
+        <input type="number" id="deposit-input" placeholder="Deposit Amount" min="0">
+        <button id="deposit-button">Deposit</button>
+      </div>
+      <div class="bet">
+        <input type="number" id="bet-input" placeholder="Bet Amount" min="1">
+        <button id="drop-button">Drop Ball</button>
+      </div>
+      <button id="reset-button">Reset Game</button>
+      <button id="dark-mode-toggle">Dark Mode</button>
+    </div>
+    <div class="scoreboard">
+      <h2>Scoreboard</h2>
+      <p>Balance: $<span id="balance">0</span></p>
+      <p>Recent Win: $<span id="recent-score">0</span></p>
+    </div>
+    <div id="game-container"></div>
+  </div>
+  <script>
+    // Module aliases from Matter.js
+    const Engine = Matter.Engine,
+          Render = Matter.Render,
+          Runner = Matter.Runner,
+          World = Matter.World,
+          Bodies = Matter.Bodies,
+          Body = Matter.Body,
+          Events = Matter.Events;
+
+    // Create engine and world
+    const engine = Engine.create();
+    const world = engine.world;
+    world.gravity.y = 1;  // realistic gravity
+
+    // Define simulation dimensions
+    const canvasWidth = 600;
+    const canvasHeight = 800;
+
+    // Create renderer within the #game-container element
+    const render = Render.create({
+      element: document.getElementById('game-container'),
+      engine: engine,
+      options: {
+        width: canvasWidth,
+        height: canvasHeight,
+        wireframes: false,
+        background: '#fafafa'
+      }
+    });
+    Render.run(render);
+
+    // Create runner
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    // Game state variables
+    let balance = 0;
+    let recentWin = 0;
+    const binMultipliers = [1, 2, 3, 4, 5, 5, 4, 3, 2, 1];  // for 10 bins
+    const ballColors = ['#e74c3c', '#3498db', '#27ae60', '#f1c40f', '#9b59b6'];
+
+    // Update scoreboard
+    function updateScoreboard() {
+      document.getElementById('balance').innerText = balance.toFixed(2);
+      document.getElementById('recent-score').innerText = recentWin.toFixed(2);
+    }
+
+    // Add boundaries (walls and floor)
+    const thickness = 50;
+    const floor = Bodies.rectangle(canvasWidth / 2, canvasHeight + thickness / 2, canvasWidth, thickness, { isStatic: true });
+    const leftWall = Bodies.rectangle(-thickness / 2, canvasHeight / 2, thickness, canvasHeight, { isStatic: true });
+    const rightWall = Bodies.rectangle(canvasWidth + thickness / 2, canvasHeight / 2, thickness, canvasHeight, { isStatic: true });
+    World.add(world, [floor, leftWall, rightWall]);
+
+    // Create pegs in a triangular grid
+    const pegRows = 8;
+    const pegCols = 11;
+    const pegSpacingX = canvasWidth / pegCols;
+    const pegSpacingY = 70;
+    const pegRadius = 5;
+    const pegOffsetY = 120; // starting y
+
+    for (let row = 0; row < pegRows; row++) {
+      // Offset odd rows
+      const offsetX = (row % 2) ? pegSpacingX / 2 : 0;
+      for (let col = 0; col < pegCols; col++) {
+        const x = offsetX + col * pegSpacingX + pegSpacingX / 2;
+        const y = pegOffsetY + row * pegSpacingY;
+        const peg = Bodies.circle(x, y, pegRadius, {
+          isStatic: true,
+          render: { fillStyle: '#555' }
+        });
+        World.add(world, peg);
+      }
+    }
+
+    // Create bins at the bottom with sensors for scoring
+    const binCount = binMultipliers.length;
+    const binWidth = canvasWidth / binCount;
+    const sensorHeight = 40;
+    const bins = [];
+    for (let i = 0; i < binCount; i++) {
+      // Create a vertical divider for the bin (except for the first one)
+      if (i > 0) {
+        const divider = Bodies.rectangle(i * binWidth, canvasHeight - sensorHeight, 10, sensorHeight * 2, {
+          isStatic: true,
+          render: { fillStyle: '#333' }
+        });
+        World.add(world, divider);
+      }
+      // Create sensor for the bin – a thin area to detect when a ball lands
+      const sensor = Bodies.rectangle(i * binWidth + binWidth / 2, canvasHeight - sensorHeight / 2, binWidth, sensorHeight, {
+        isStatic: true,
+        isSensor: true,
+        render: { visible: false }
+      });
+      // Attach the multiplier as a custom property
+      sensor.binIndex = i;
+      sensor.multiplier = binMultipliers[i];
+      bins.push(sensor);
+    }
+    World.add(world, bins);
+
+    // Add floor text labels for each bin (using render options)
+    bins.forEach(sensor => {
+      const label = Bodies.rectangle(sensor.position.x, canvasHeight - sensorHeight / 2, binWidth, sensorHeight, {
+        isStatic: true,
+        isSensor: true,
+        render: {
+          fillStyle: 'transparent',
+          strokeStyle: 'transparent',
+          text: {
+            content: "x" + sensor.multiplier,
+            color: '#333',
+            size: 20
+          }
+        }
+      });
+      World.add(world, label);
+    });
+
+    // Function to create and drop a ball
+    function dropBall(betAmount) {
+      // Deduct the bet amount from the balance
+      balance -= betAmount;
+      updateScoreboard();
+
+      // Random x near the top center (with a little variation)
+      const startX = canvasWidth / 2 + (Math.random() * 100 - 50);
+      const ball = Bodies.circle(startX, 20, 10, {
+        restitution: 0.5,
+        label: 'ball',
+        render: {
+          fillStyle: ballColors[Math.floor(Math.random() * ballColors.length)]
+        }
+      });
+      // Attach the bet amount to the ball for scoring later
+      ball.bet = betAmount;
+      World.add(world, ball);
+    }
+
+    // Collision event to detect when a ball enters a bin sensor
+    Events.on(engine, 'collisionStart', event => {
+      event.pairs.forEach(pair => {
+        const { bodyA, bodyB } = pair;
+        let ball, sensor;
+        if (bodyA.label === 'ball' && bodyB.binIndex !== undefined) {
+          ball = bodyA;
+          sensor = bodyB;
+        } else if (bodyB.label === 'ball' && bodyA.binIndex !== undefined) {
+          ball = bodyB;
+          sensor = bodyA;
+        }
+        if (ball && sensor) {
+          // Calculate win based on the bet and bin multiplier
+          const win = ball.bet * sensor.multiplier;
+          recentWin = win;
+          balance += win;
+          updateScoreboard();
+          // Remove the ball after a short delay to allow the collision to register visually
+          setTimeout(() => {
+            World.remove(world, ball);
+          }, 100);
+        }
+      });
+    });
+
+    // UI Event Listeners
+    document.getElementById('deposit-button').addEventListener('click', () => {
+      const depositInput = document.getElementById('deposit-input');
+      const depositValue = parseFloat(depositInput.value);
+      if (!isNaN(depositValue) && depositValue > 0) {
+        balance += depositValue;
+        updateScoreboard();
+        depositInput.value = '';
+      }
+    });
+
+    document.getElementById('drop-button').addEventListener('click', () => {
+      const betInput = document.getElementById('bet-input');
+      const betAmount = parseFloat(betInput.value);
+      if (isNaN(betAmount) || betAmount <= 0) {
+        alert("Please enter a valid bet amount.");
+        return;
+      }
+      if (betAmount > balance) {
+        alert("Insufficient balance for that bet.");
+        return;
+      }
+      dropBall(betAmount);
+      betInput.value = '';
+    });
+
+    document.getElementById('reset-button').addEventListener('click', () => {
+      // Remove all balls from the world (filter bodies with label 'ball')
+      World.clear(world, false);
+      // Re-add boundaries, pegs, and bins
+      World.add(world, [floor, leftWall, rightWall]);
+      // Re-add pegs
+      for (let row = 0; row < pegRows; row++) {
+        const offsetX = (row % 2) ? pegSpacingX / 2 : 0;
+        for (let col = 0; col < pegCols; col++) {
+          const x = offsetX + col * pegSpacingX + pegSpacingX / 2;
+          const y = pegOffsetY + row * pegSpacingY;
+          const peg = Bodies.circle(x, y, pegRadius, {
+            isStatic: true,
+            render: { fillStyle: '#555' }
+          });
+          World.add(world, peg);
+        }
+      }
+      // Re-add bins and their dividers
+      World.add(world, bins);
+      bins.forEach(sensor => {
+        // Re-add label sensors (invisible bodies used for text display)
+        const label = Bodies.rectangle(sensor.position.x, canvasHeight - sensorHeight / 2, binWidth, sensorHeight, {
+          isStatic: true,
+          isSensor: true,
+          render: {
+            fillStyle: 'transparent',
+            strokeStyle: 'transparent',
+            text: {
+              content: "x" + sensor.multiplier,
+              color: '#333',
+              size: 20
+            }
+          }
+        });
+        World.add(world, label);
+      });
+      // Reset balance and recent win
+      balance = 0;
+      recentWin = 0;
+      updateScoreboard();
+    });
+
+    document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+    });
+
+    // Initial scoreboard update
+    updateScoreboard();
+  </script>
+</body>
+</html>
