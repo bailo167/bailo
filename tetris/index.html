@@ -27,6 +27,7 @@
   <script>
   (() => {
     const COLS = 10, ROWS = 20;
+    const PREVIEW_COLS = 6;
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     let blockSize = 20;
@@ -34,26 +35,22 @@
     let current, next;
     let dropCounter = 0, dropInterval = 1000;
     let lastTime = 0;
+    let score = 0;
 
     const COLORS = [
       null,
-      'cyan',    // I
-      'blue',    // J
-      'orange',  // L
-      'yellow',  // O
-      'green',   // S
-      'purple',  // T
-      'red'      // Z
+      'cyan', 'blue', 'orange', 'yellow',
+      'green', 'purple', 'red'
     ];
 
     const PIECES = [
-      [ [[1,1,1,1]], [[1],[1],[1],[1]] ],                   // I
-      [ [[2,0,0],[2,2,2]], [[2,2],[2,0],[2,0]], [[2,2,2],[0,0,2]], [[0,2],[0,2],[2,2]] ], // J
-      [ [[0,0,3],[3,3,3]], [[3,0],[3,0],[3,3]], [[3,3,3],[3,0,0]], [[3,3],[0,3],[0,3]] ], // L
-      [ [[4,4],[4,4]] ],                                     // O
-      [ [[0,5,5],[5,5,0]], [[5,0],[5,5],[0,5]] ],           // S
-      [ [[0,6,0],[6,6,6]], [[6,0],[6,6],[6,0]], [[6,6,6],[0,6,0]], [[0,6],[6,6],[0,6]] ], // T
-      [ [[7,7,0],[0,7,7]], [[0,7],[7,7],[7,0]] ]            // Z
+      [ [[1,1,1,1]], [[1],[1],[1],[1]] ],
+      [ [[2,0,0],[2,2,2]], [[2,2],[2,0],[2,0]], [[2,2,2],[0,0,2]], [[0,2],[0,2],[2,2]] ],
+      [ [[0,0,3],[3,3,3]], [[3,0],[3,0],[3,3]], [[3,3,3],[3,0,0]], [[3,3],[0,3],[0,3]] ],
+      [ [[4,4],[4,4]] ],
+      [ [[0,5,5],[5,5,0]], [[5,0],[5,5],[0,5]] ],
+      [ [[0,6,0],[6,6,6]], [[6,0],[6,6],[6,0]], [[6,6,6],[0,6,0]], [[0,6],[6,6],[0,6]] ],
+      [ [[7,7,0],[0,7,7]], [[0,7],[7,7],[7,0]] ]
     ];
 
     function initGrid() {
@@ -63,17 +60,18 @@
     function resize() {
       const cw = window.innerWidth;
       const ch = window.innerHeight;
-      const bsW = Math.floor(cw / COLS);
+      const bsW = Math.floor(cw / (COLS + PREVIEW_COLS));
       const bsH = Math.floor(ch * 0.9 / ROWS);
       blockSize = Math.max(20, Math.min(bsW, bsH));
-      canvas.width = COLS * blockSize;
+      canvas.width = (COLS + PREVIEW_COLS) * blockSize;
       canvas.height = ROWS * blockSize;
     }
 
-    function drawMatrix(matrix, offset) {
+    function drawMatrix(matrix, offset, ghost=false) {
       matrix.forEach((row, y) =>
         row.forEach((value, x) => {
           if (value) {
+            ctx.globalAlpha = ghost ? 0.3 : 1;
             ctx.fillStyle = COLORS[value];
             ctx.fillRect(
               (x + offset.x) * blockSize,
@@ -81,20 +79,46 @@
               blockSize - 1,
               blockSize - 1
             );
+            ctx.globalAlpha = 1;
           }
         })
       );
     }
 
+    function drawGrid() {
+      ctx.strokeStyle = '#222';
+      for (let x = 0; x <= COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * blockSize, 0);
+        ctx.lineTo(x * blockSize, ROWS * blockSize);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * blockSize);
+        ctx.lineTo(COLS * blockSize, y * blockSize);
+        ctx.stroke();
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawMatrix(grid, {x:0,y:0});
+      drawGrid();
+      const ghost = getGhost();
+      drawMatrix(ghost.shape[ghost.rot], {x:ghost.x, y:ghost.y}, true);
       drawMatrix(current.shape[current.rot], {x: current.x, y: current.y});
+      // Preview & score
+      ctx.fillStyle = '#fff';
+      ctx.font = `${blockSize}px Arial`;
+      ctx.fillText(`Score: ${score}`, COLS*blockSize + blockSize, blockSize*1.5);
+      ctx.fillText(`Next:`, COLS*blockSize + blockSize, blockSize*3);
+      drawMatrix(next.shape[0], {x: COLS+1, y:4});
     }
 
     function collide(matrix, piece) {
-      for (let y=0; y<piece.shape[piece.rot].length; ++y) {
-        for (let x=0; x<piece.shape[piece.rot][y].length; ++x) {
+      for (let y=0; y<piece.shape[piece.rot].length; y++) {
+        for (let x=0; x<piece.shape[piece.rot][y].length; x++) {
           if (piece.shape[piece.rot][y][x] &&
              (matrix[y + piece.y] && matrix[y + piece.y][x + piece.x]) !== 0) {
             return true;
@@ -116,16 +140,6 @@
       const prev = current.rot;
       current.rot = (current.rot + dir + current.shape.length) % current.shape.length;
       if (collide(grid, current)) {
-        // simple wall-kick
-        const w = current.shape[0][0].length;
-        for (let i=1; i<=w; ++i) {
-          current.x += i;
-          if (!collide(grid, current)) return;
-          current.x -= i;
-          current.x -= i;
-          if (!collide(grid, current)) return;
-          current.x += i;
-        }
         current.rot = prev;
       }
     }
@@ -136,9 +150,7 @@
     }
 
     function hardDrop() {
-      while (!collide(grid, current)) {
-        current.y++;
-      }
+      while (!collide(grid, current)) current.y++;
       current.y--;
       drop();
     }
@@ -155,30 +167,42 @@
     }
 
     function sweep() {
-      outer: for (let y = ROWS - 1; y >= 0; --y) {
-        for (let x = 0; x < COLS; ++x) {
+      let lines = 0;
+      outer: for (let y = ROWS - 1; y >= 0; y--) {
+        for (let x = 0; x < COLS; x++) {
           if (!grid[y][x]) continue outer;
         }
-        const row = grid.splice(y, 1)[0].fill(0);
-        grid.unshift(row);
+        grid.splice(y, 1);
+        grid.unshift(Array(COLS).fill(0));
+        lines++;
         y++;
       }
+      if (lines) score += lines * 100;
     }
 
     function spawn() {
-      const id = Math.floor(Math.random() * PIECES.length);
-      current = {
-        shape: PIECES[id],
-        rot: 0,
-        x: Math.floor((COLS - PIECES[id][0][0].length) / 2),
-        y: 0
-      };
-      if (collide(grid, current)) {
-        initGrid();
-      }
+      current = next;
+      next = createPiece();
+      current.x = Math.floor((COLS - current.shape[0][0].length) / 2);
+      current.y = 0;
+      current.rot = 0;
+      if (collide(grid, current)) initGrid();
     }
 
-    function update(time = 0) {
+    function createPiece() {
+      const id = Math.floor(Math.random() * PIECES.length);
+      return { shape: PIECES[id], rot:0, x:0, y:0 };
+    }
+
+    function getGhost() {
+      const ghost = { ...current };
+      ghost.y = current.y;
+      while (!collide(grid, ghost)) ghost.y++;
+      ghost.y--;
+      return ghost;
+    }
+
+    function update(time=0) {
       const delta = time - lastTime;
       lastTime = time;
       dropCounter += delta;
@@ -187,61 +211,48 @@
       requestAnimationFrame(update);
     }
 
-    // --- controls ---
     document.addEventListener('keydown', e => {
       if (e.key === 'ArrowLeft') movePiece(-1);
       else if (e.key === 'ArrowRight') movePiece(1);
       else if (e.key === 'ArrowDown') drop();
       else if (e.key === 'ArrowUp') rotatePiece(1);
+      else if (e.key === ' ') hardDrop();
     });
 
-    // touch/gesture
-    let startX, startY, prevX, prevY, movedCells = 0, didTap = false, didDrop = false;
+    // touch controls
+    let startX, startY, prevX, prevY, moved=0, didTap=false, didDrop=false;
     canvas.addEventListener('touchstart', e => {
       e.preventDefault();
       const t = e.touches[0];
       startX = prevX = t.clientX;
       startY = prevY = t.clientY;
-      movedCells = 0;
-      didTap = true;
-      didDrop = false;
+      moved = 0; didTap = true; didDrop = false;
     }, {passive:false});
-
     canvas.addEventListener('touchmove', e => {
       e.preventDefault();
       didTap = false;
       const t = e.touches[0];
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
-      // horizontal drag
       const cells = Math.floor(dx / blockSize);
-      if (cells !== movedCells) {
-        const delta = cells - movedCells;
-        for (let i = 0; i < Math.abs(delta); ++i) {
-          movePiece(delta > 0 ? 1 : -1);
-        }
-        movedCells = cells;
+      if (cells !== moved) {
+        const d = cells - moved;
+        for (let i=0; i<Math.abs(d); i++) movePiece(d>0?1:-1);
+        moved = cells;
       }
-      // downward drag = hard drop
-      if (!didDrop && dy > blockSize) {
-        hardDrop();
-        didDrop = true;
-      }
+      if (!didDrop && dy > blockSize) { hardDrop(); didDrop = true; }
       prevX = t.clientX; prevY = t.clientY;
     }, {passive:false});
-
     canvas.addEventListener('touchend', e => {
       e.preventDefault();
       const dx = prevX - startX, dy = prevY - startY;
-      if (didTap && Math.hypot(dx, dy) < 10) {
-        rotatePiece(1);
-      }
+      if (didTap && Math.hypot(dx, dy) < 10) rotatePiece(1);
     }, {passive:false});
 
-    // --- start game ---
     window.addEventListener('resize', resize);
     resize();
     initGrid();
+    next = createPiece();
     spawn();
     update();
   })();
