@@ -60,7 +60,7 @@
     <canvas id="game"></canvas>
     <div id="ui">
       <div class="panel">
-        <h1>SCORE</n></h1>
+        <h1>SCORE</h1>
         <div id="score">0</div>
       </div>
       <div class="panel">
@@ -85,14 +85,13 @@
     const levelEl = document.getElementById('level');
 
     let blockSize = 24;
-    let grid;
+    let grid = [];
     let current, next;
     let dropCounter = 0;
-    let dropInterval;
+    let dropInterval = 1000;
     let lastTime = 0;
-    let score;
-    let level;
-    let gameOver;
+    let score = 0;
+    let level = 1;
 
     const COLORS = [
       null,
@@ -110,32 +109,22 @@
       [ [[7,7,0],[0,7,7]], [[0,7],[7,7],[7,0]] ]
     ];
 
-    function resetGame() {
-      initGrid();
-      score = 0;
-      level = 1;
-      dropInterval = 1000;
-      dropCounter = 0;
-      gameOver = false;
-      next = createPiece();
-      spawn();
-      scoreEl.textContent = score;
-      levelEl.textContent = level;
-      update();
-    }
-
     function initGrid() {
       grid = Array.from({length: ROWS}, () => Array(COLS).fill(0));
     }
 
     function resize() {
-      canvas.width = COLS * blockSize;
-      canvas.height = ROWS * blockSize;
+      const cw = COLS * blockSize;
+      const ch = ROWS * blockSize;
+      canvas.width = cw;
+      canvas.height = ch;
     }
 
     function drawBoard() {
+      // background
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // grid lines
       ctx.strokeStyle = '#333';
       for (let x = 0; x <= COLS; x++) {
         ctx.beginPath();
@@ -169,33 +158,13 @@
       );
     }
 
-    function draw() {
-      drawBoard();
-      drawMatrix(ctx, grid, {x:0, y:0});
-      if (!gameOver) {
-        const ghost = getGhost();
-        drawMatrix(ctx, ghost.shape[ghost.rot], {x:ghost.x, y:ghost.y}, true);
-        drawMatrix(ctx, current.shape[current.rot], {x:current.x, y:current.y});
-      } else {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#fff';
-        ctx.font = `${blockSize}px Press Start 2P`;
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - blockSize);
-        ctx.fillText('PRESS ENTER', canvas.width/2, canvas.height/2 + blockSize);
-        return;
-      }
-      requestAnimationFrame(draw);
-    }
-
     function update(time = 0) {
-      if (gameOver) return;
       const delta = time - lastTime;
       lastTime = time;
       dropCounter += delta;
       if (dropCounter > dropInterval) drop();
       draw();
+      requestAnimationFrame(update);
     }
 
     function collide(matrix, piece) {
@@ -233,7 +202,7 @@
       if (lines) {
         score += lines * 100;
         level = Math.floor(score / 1000) + 1;
-        dropInterval = Math.max(100, 1000 - (level-1)*50);
+        dropInterval = 1000 - (level-1)*50;
         scoreEl.textContent = score;
         levelEl.textContent = level;
       }
@@ -273,7 +242,7 @@
       current.x = Math.floor((COLS - current.shape[0][0].length)/2);
       current.y = 0;
       current.rot = 0;
-      if (collide(grid, current)) gameOver = true;
+      if (collide(grid, current)) initGrid();
       drawNext();
     }
 
@@ -285,11 +254,20 @@
       return ghost;
     }
 
+    function draw() {
+      drawBoard();
+      drawMatrix(ctx, grid, {x:0,y:0});
+      const ghost = getGhost();
+      drawMatrix(ctx, ghost.shape[ghost.rot], {x:ghost.x,y:ghost.y}, true);
+      drawMatrix(ctx, current.shape[current.rot], {x:current.x,y:current.y});
+    }
+
     function drawNext() {
       nctx.clearRect(0,0,nextCanvas.width,nextCanvas.height);
       nctx.fillStyle = '#000';
       nctx.fillRect(0,0,nextCanvas.width,nextCanvas.height);
-      drawMatrix(nctx, next.shape[0], {x:1,y:1});
+      const offX = 1, offY = 1;
+      drawMatrix(nctx, next.shape[0], {x:offX, y:offY});
     }
 
     function createPiece() {
@@ -298,52 +276,26 @@
     }
 
     document.addEventListener('keydown', e => {
-      if (gameOver && e.key === 'Enter') resetGame();
       switch(e.key) {
-        case 'ArrowLeft': if (!gameOver) move(-1); break;
-        case 'ArrowRight': if (!gameOver) move(1); break;
-        case 'ArrowDown': if (!gameOver) drop(); break;
-        case 'ArrowUp': if (!gameOver) rotate(1); break;
-        case ' ': if (!gameOver) hardDrop(); break;
+        case 'ArrowLeft': move(-1); break;
+        case 'ArrowRight': move(1); break;
+        case 'ArrowDown': drop(); break;
+        case 'ArrowUp': rotate(1); break;
+        case ' ': hardDrop(); break;
       }
     });
 
-    // touch controls (disabled after game over)
+    // touch controls (unchanged from prior)…
     let startX, startY, prevX, prevY, moved=0, didTap=false, didDrop=false;
-    canvas.addEventListener('touchstart', e => {
-      if (gameOver) return;
-      e.preventDefault();
-      const t = e.touches[0];
-      startX = prevX = t.clientX;
-      startY = prevY = t.clientY;
-      moved = 0; didTap = true; didDrop = false;
-    },{passive:false});
-    canvas.addEventListener('touchmove', e => {
-      if (gameOver) return;
-      e.preventDefault();
-      didTap = false;
-      const t = e.touches[0];
-      const dx = t.clientX - startX;
-      const dy = t.clientY - startY;
-      const cells = Math.floor(dx / blockSize);
-      if (cells !== moved) {
-        const d = cells - moved;
-        for (let i=0; i<Math.abs(d); i++) move(d>0?1:-1);
-        moved = cells;
-      }
-      if (!didDrop && dy > blockSize) { hardDrop(); didDrop = true; }
-      prevX = t.clientX; prevY = t.clientY;
-    },{passive:false});
-    canvas.addEventListener('touchend', e => {
-      if (gameOver) return;
-      e.preventDefault();
-      const dx = prevX - startX;
-      const dy = prevY - startY;
-      if (didTap && Math.hypot(dx, dy) < 10) rotate(1);
-    },{passive:false});
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; startX=prevX=t.clientX; startY=prevY=t.clientY; moved=0; didTap=true; didDrop=false; },{passive:false});
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); didTap=false; const t=e.touches[0]; const dx=t.clientX-startX, dy=t.clientY-startY; const cells=Math.floor(dx/blockSize); if(cells!==moved){const d=cells-moved; for(let i=0;i<Math.abs(d);i++) move(d>0?1:-1); moved=cells;} if(!didDrop && dy>blockSize){ hardDrop(); didDrop=true;} prevX=t.clientX; prevY=t.clientY; },{passive:false});
+    canvas.addEventListener('touchend', e => { e.preventDefault(); const dx=prevX-startX, dy=prevY-startY; if(didTap && Math.hypot(dx,dy)<10) rotate(1); },{passive:false});
 
-    // start the first game
-    resetGame();
+    initGrid();
+    resize();
+    next = createPiece();
+    spawn();
+    update();
   })();
   </script>
 </body>
